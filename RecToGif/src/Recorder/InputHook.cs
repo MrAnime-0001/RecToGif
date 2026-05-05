@@ -1,0 +1,264 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+using RecToGif.Models;
+
+namespace RecToGif.Recorder
+{
+    public class InputHook : IDisposable
+    {
+        private readonly ConcurrentQueue<InputEvent> _eventBuffer = new();
+        private Thread? _hookThread;
+        private bool _isRunning;
+        private int _hookThreadNativeId;
+        private IntPtr _keyboardHookId = IntPtr.Zero;
+        private IntPtr _mouseHookId = IntPtr.Zero;
+        private LowLevelKeyboardProc? _keyboardProc;
+        private LowLevelMouseProc? _mouseProc;
+
+        public event EventHandler<string>? ShortcutPressed;
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WH_MOUSE_LL = 14;
+
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_MBUTTONDOWN = 0x0207;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT
+        {
+            public int vkCode;
+            public int scanCode;
+            public int flags;
+            public int time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public int mouseData;
+            public int flags;
+            public int time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        public void Start()
+        {
+            if (_isRunning) return;
+            _isRunning = true;
+
+            _hookThread = new Thread(RunHookLoop)
+            {
+                IsBackground = true,
+                Name = "InputHookThread"
+            };
+            _hookThread.SetApartmentState(ApartmentState.STA);
+            _hookThread.Start();
+        }
+
+        public void Stop()
+        {
+            if (!_isRunning) return;
+            _isRunning = false;
+
+            if (_hookThread != null && _hookThread.IsAlive && _hookThreadNativeId != 0)
+            {
+                PostThreadMessage((uint)_hookThreadNativeId, 0x0012 /* WM_QUIT */, IntPtr.Zero, IntPtr.Zero);
+                _hookThread.Join(2000);
+            }
+            _eventBuffer.Clear();
+        }
+
+        public void ClearEvents()
+        {
+            _eventBuffer.Clear();
+        }
+
+        private void RunHookLoop()
+        {
+            _hookThreadNativeId = GetCurrentThreadId();
+            _keyboardProc = KeyboardHookCallback;
+            _mouseProc = MouseHookCallback;
+
+            using (Process curProcess = Process.GetCurrentProcess())
+            using (ProcessModule curModule = curProcess.MainModule!)
+            {
+                IntPtr moduleHandle = GetModuleHandle(curModule.ModuleName);
+                _keyboardHookId = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, moduleHandle, 0);
+                _mouseHookId = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, moduleHandle, 0);
+            }
+
+            if (_keyboardHookId == IntPtr.Zero || _mouseHookId == IntPtr.Zero)
+            {
+                if (_keyboardHookId != IntPtr.Zero) UnhookWindowsHookEx(_keyboardHookId);
+                if (_mouseHookId != IntPtr.Zero) UnhookWindowsHookEx(_mouseHookId);
+                _keyboardHookId = IntPtr.Zero;
+                _mouseHookId = IntPtr.Zero;
+                _isRunning = false;
+                return;
+            }
+
+            Application.Run();
+
+            if (_keyboardHookId != IntPtr.Zero) UnhookWindowsHookEx(_keyboardHookId);
+            if (_mouseHookId != IntPtr.Zero) UnhookWindowsHookEx(_mouseHookId);
+            
+            _keyboardHookId = IntPtr.Zero;
+            _mouseHookId = IntPtr.Zero;
+        }
+
+        private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (!_isRunning) return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+
+            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            {
+                int vkCode = Marshal.ReadInt32(lParam);
+                Keys key = (Keys)vkCode;
+                
+                // Skip modifier keys themselves from being the primary key in a combo event
+                // but we still want to track them if they are part of a combo.
+                if (IsModifierKey(key))
+                {
+                    return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+                }
+
+                string keyStr = GetKeyComboString(key);
+
+                ShortcutPressed?.Invoke(this, keyStr);
+                
+                _eventBuffer.Enqueue(new InputEvent
+                {
+                    Type = "KeyDown",
+                    Key = keyStr,
+                    TimestampMs = DateTimeOffset.Now.ToUnixTimeMilliseconds()
+                });
+            }
+            return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+        }
+
+        private bool IsModifierKey(Keys key)
+        {
+            return key == Keys.ControlKey || key == Keys.LControlKey || key == Keys.RControlKey ||
+                   key == Keys.ShiftKey || key == Keys.LShiftKey || key == Keys.RShiftKey ||
+                   key == Keys.Menu || key == Keys.LMenu || key == Keys.RMenu;
+        }
+
+        private string GetKeyComboString(Keys key)
+        {
+            var modifiers = new List<string>();
+            if ((Control.ModifierKeys & Keys.Control) == Keys.Control) modifiers.Add("Ctrl");
+            if ((Control.ModifierKeys & Keys.Shift) == Keys.Shift) modifiers.Add("Shift");
+            if ((Control.ModifierKeys & Keys.Alt) == Keys.Alt) modifiers.Add("Alt");
+
+            if (modifiers.Count > 0)
+            {
+                return string.Join("+", modifiers) + "+" + key.ToString();
+            }
+            return key.ToString();
+        }
+
+        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0)
+            {
+                string? button = null;
+                if (wParam == (IntPtr)WM_LBUTTONDOWN) button = "Left";
+                else if (wParam == (IntPtr)WM_RBUTTONDOWN) button = "Right";
+                else if (wParam == (IntPtr)WM_MBUTTONDOWN) button = "Middle";
+
+                if (button != null)
+                {
+                    var hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                    _eventBuffer.Enqueue(new InputEvent
+                    {
+                        Type = "MouseClick",
+                        Button = button,
+                        X = hookStruct.pt.x,
+                        Y = hookStruct.pt.y,
+                        TimestampMs = DateTimeOffset.Now.ToUnixTimeMilliseconds()
+                    });
+                }
+            }
+            return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+        }
+
+        public List<InputEvent> FlushEvents(long startTimestampMs, long endTimestampMs)
+        {
+            var events = new List<InputEvent>();
+            // Since we want to keep events that might belong to future frames, we can't just dequeue all.
+            // But usually, we process frames in order.
+            
+            // For simplicity, we'll take all events up to endTimestampMs.
+            // Any event with TimestampMs <= endTimestampMs is moved to the list.
+            
+            // This is slightly tricky with ConcurrentQueue if we want to leave some items.
+            // Maybe we can peek and dequeue if it matches.
+            
+            while (_eventBuffer.TryPeek(out var ev))
+            {
+                if (ev.TimestampMs <= endTimestampMs)
+                {
+                    if (_eventBuffer.TryDequeue(out ev))
+                    {
+                        if (ev.TimestampMs >= startTimestampMs)
+                        {
+                            events.Add(ev);
+                        }
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return events;
+        }
+
+        public void Dispose()
+        {
+            Stop();
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, Delegate lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("kernel32.dll")]
+        private static extern int GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool PostThreadMessage(uint idThread, uint msg, IntPtr wParam, IntPtr lParam);
+    }
+}
