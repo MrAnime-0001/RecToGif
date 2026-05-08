@@ -17,6 +17,10 @@ namespace RecToGif.Controls
         public int Padding { get; set; } = 10;
         public int CornerRadius { get; set; } = 15;
 
+        private Rectangle _cachedRect;
+        private int _cachedRadius;
+        private GraphicsPath? _cachedPath;
+
         public void Render(Graphics g, List<InputEvent> events, Size frameSize)
         {
             if (events == null || events.Count == 0) return;
@@ -73,14 +77,21 @@ namespace RecToGif.Controls
 
         private GraphicsPath GetRoundedRect(Rectangle rect, int radius)
         {
-            var path = new GraphicsPath();
+            if (_cachedPath != null && _cachedRect == rect && _cachedRadius == radius)
+                return _cachedPath;
+
+            _cachedPath?.Dispose();
+            _cachedPath = new GraphicsPath();
+            _cachedRect = rect;
+            _cachedRadius = radius;
+
             int diameter = radius * 2;
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            return path;
+            _cachedPath.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            _cachedPath.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            _cachedPath.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            _cachedPath.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            _cachedPath.CloseFigure();
+            return _cachedPath;
         }
     }
 }

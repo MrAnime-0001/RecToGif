@@ -94,13 +94,23 @@ namespace RecToGif.Presenters
 
             if (item == null && _selectedRegion.HasValue)
             {
+                // Get consent via picker first, then use CreateForMonitor for the monitor
+                var picker = new GraphicsCapturePicker();
+                InitializeWithWindow.Initialize(picker, _view.Handle);
+                var consentItem = await picker.PickSingleItemAsync();
+                if (consentItem == null)
+                {
+                    _view.ShowInlineMessage("Capture consent denied.");
+                    return;
+                }
+
                 // Try to get monitor from region
-                var rect = new RECT 
-                { 
-                    Left = _selectedRegion.Value.Left, 
-                    Top = _selectedRegion.Value.Top, 
-                    Right = _selectedRegion.Value.Right, 
-                    Bottom = _selectedRegion.Value.Bottom 
+                var rect = new RECT
+                {
+                    Left = _selectedRegion.Value.Left,
+                    Top = _selectedRegion.Value.Top,
+                    Right = _selectedRegion.Value.Right,
+                    Bottom = _selectedRegion.Value.Bottom
                 };
                 IntPtr hMonitor = MonitorFromRect(ref rect, 2); // MONITOR_DEFAULTTONEAREST
 
@@ -123,10 +133,11 @@ namespace RecToGif.Presenters
             SettingsService.EnsureDirectoriesExist();
             string outputDir = SettingsService.CreateNewTempSessionFolder();
 
+            var settings = SettingsService.LoadSettings();
             _currentSession = new CaptureSession
             {
                 OutputDirectory = outputDir,
-                TargetFps = 15
+                TargetFps = settings.DefaultFps
             };
 
             if (_selectedRegion.HasValue && _selectedItem == null)

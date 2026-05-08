@@ -71,6 +71,7 @@ namespace RecToGif.Presenters
         public void DeleteSelectedFrames()
         {
             if (_selectedIndices.Count == 0) return;
+            StopPlayback();
             var command = new DeleteFramesCommand(_selectedIndices);
             _model.ExecuteCommand(command);
             RefreshView();
@@ -79,6 +80,7 @@ namespace RecToGif.Presenters
         public void DuplicateSelectedFrames()
         {
             if (_selectedIndices.Count == 0) return;
+            StopPlayback();
             var command = new DuplicateFramesCommand(_selectedIndices);
             _model.ExecuteCommand(command);
             RefreshView();
@@ -87,6 +89,7 @@ namespace RecToGif.Presenters
         public void MoveSelectedFrames(int direction)
         {
             if (_selectedIndices.Count == 0) return;
+            StopPlayback();
             var command = new MoveFramesCommand(_selectedIndices, direction);
             _model.ExecuteCommand(command);
             RefreshView();
@@ -102,12 +105,14 @@ namespace RecToGif.Presenters
 
         public void Undo()
         {
+            StopPlayback();
             _model.Undo();
             RefreshView();
         }
 
         public void Redo()
         {
+            StopPlayback();
             _model.Redo();
             RefreshView();
         }
@@ -147,22 +152,33 @@ namespace RecToGif.Presenters
         {
             _playbackCts?.Cancel();
             _playbackCts = null;
+            _view.InvokeIfRequired(() => _view.SetPlaybackMode(false));
         }
 
         private async Task PlaybackLoop(CancellationToken token, int start, int end)
         {
             try
             {
+                var sw = new System.Diagnostics.Stopwatch();
+                sw.Start();
                 while (!token.IsCancellationRequested)
                 {
                     if (_model.Frames.Count == 0) break;
 
                     if (_playbackIndex > end || _playbackIndex < start) _playbackIndex = start;
-                    
-                    var frame = _model.Frames[_playbackIndex];
-                    _view.InvokeIfRequired(() => _view.ShowFramePreview(frame));
 
-                    await Task.Delay(frame.Metadata.DelayMs, token);
+                    var frame = _model.Frames[_playbackIndex];
+                    _view.InvokeIfRequired(() =>
+                    {
+                        _view.ShowFramePreview(frame);
+                        _view.SetPlaybackMode(true);
+                    });
+
+                    int delayMs = frame.Metadata.DelayMs;
+                    long elapsed = sw.ElapsedMilliseconds;
+                    int expectedElapsed = (_playbackIndex - start) * delayMs;
+                    int adjust = Math.Max(0, delayMs - (int)(elapsed - expectedElapsed));
+                    await Task.Delay(adjust, token);
                     _playbackIndex++;
                 }
             }
@@ -267,6 +283,7 @@ namespace RecToGif.Presenters
         void DisplayFrames(IEnumerable<FrameItem> frames);
         void ShowFramePreview(FrameItem frame);
         void InvokeIfRequired(Action action);
+        void SetPlaybackMode(bool playing);
         
         bool IsCropping { get; set; }
         Rectangle CropRegion { get; set; }

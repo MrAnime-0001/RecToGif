@@ -14,6 +14,9 @@ namespace RecToGif.Controls
         private Image? _currentImage;
         private readonly InputOverlayRenderer _overlayRenderer = new();
         private bool _showOverlay = true;
+        private bool _isPlaying = false;
+        private Image? _cachedWatermark;
+        private string _cachedWatermarkPath = string.Empty;
         
         // Crop State
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -47,18 +50,22 @@ namespace RecToGif.Controls
         {
             _currentFrame = frame;
             _currentImage?.Dispose();
-            
+
             if (File.Exists(frame.ImagePath))
             {
-                using var stream = new FileStream(frame.ImagePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                using var tmp = Image.FromStream(stream);
-                _currentImage = new Bitmap(tmp);
+                _currentImage = new Bitmap(frame.ImagePath);
             }
             else
             {
                 _currentImage = null;
             }
 
+            this.Invalidate();
+        }
+
+        public void SetPlaybackMode(bool playing)
+        {
+            _isPlaying = playing;
             this.Invalidate();
         }
 
@@ -180,7 +187,9 @@ namespace RecToGif.Controls
             int y = (this.Height - h) / 2;
 
             var destRect = new Rectangle(x, y, w, h);
-            e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            e.Graphics.InterpolationMode = _isPlaying
+                ? System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear
+                : System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             e.Graphics.DrawImage(_currentImage, destRect);
 
             if (_showOverlay && _currentFrame != null)
@@ -239,16 +248,19 @@ namespace RecToGif.Controls
             }
             else if (overlay.Type == OverlayType.Watermark)
             {
-                if (File.Exists(overlay.Content))
+                if (string.IsNullOrEmpty(overlay.Content) || !File.Exists(overlay.Content)) return;
+
+                if (_cachedWatermark == null || _cachedWatermarkPath != overlay.Content)
                 {
-                    using (var img = Image.FromFile(overlay.Content))
-                    {
-                        var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = overlay.Opacity };
-                        var ia = new System.Drawing.Imaging.ImageAttributes();
-                        ia.SetColorMatrix(cm);
-                        g.DrawImage(img, screenBounds, 0, 0, img.Width, img.Height, GraphicsUnit.Pixel, ia);
-                    }
+                    _cachedWatermark?.Dispose();
+                    _cachedWatermark = Image.FromFile(overlay.Content);
+                    _cachedWatermarkPath = overlay.Content;
                 }
+
+                var cm = new System.Drawing.Imaging.ColorMatrix { Matrix33 = overlay.Opacity };
+                var ia = new System.Drawing.Imaging.ImageAttributes();
+                ia.SetColorMatrix(cm);
+                g.DrawImage(_cachedWatermark, screenBounds, 0, 0, _cachedWatermark.Width, _cachedWatermark.Height, GraphicsUnit.Pixel, ia);
             }
         }
 
@@ -264,6 +276,7 @@ namespace RecToGif.Controls
             if (disposing)
             {
                 _currentImage?.Dispose();
+                _cachedWatermark?.Dispose();
             }
             base.Dispose(disposing);
         }

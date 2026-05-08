@@ -9,25 +9,22 @@ namespace RecToGif.Forms
         private Point _startPos;
         private bool _isSelecting = false;
         public Rectangle SelectedRegion { get; private set; }
-        private readonly Font _font = new Font("Segoe UI", 12, FontStyle.Bold);
+        internal readonly Font _font = new Font("Segoe UI", 12, FontStyle.Bold);
 
         public RegionSelectorOverlay()
         {
             InitializeComponent();
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-        }
-
-        private void InitializeComponent()
-        {
-            this.FormBorderStyle = FormBorderStyle.None;
+            
             // Cover all screens
             this.Bounds = SystemInformation.VirtualScreen;
-            this.BackColor = Color.Black;
-            this.Opacity = 0.3;
-            this.Cursor = Cursors.Cross;
-            this.TopMost = true;
-            this.ShowInTaskbar = false;
+            
+            this.SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            
+            SubscribeEvents();
+        }
 
+        private void SubscribeEvents()
+        {
             this.MouseDown += (s, e) =>
             {
                 if (e.Button == MouseButtons.Left)
@@ -73,9 +70,6 @@ namespace RecToGif.Forms
         {
             if (_isSelecting || !SelectedRegion.IsEmpty)
             {
-                // Clear the region to be transparent (not really possible with Opacity, 
-                // but we can draw a "hole" if we used TransparencyKey)
-                
                 // For now, just draw the rectangle and dimensions
                 using var pen = new Pen(Color.Red, 2);
                 e.Graphics.DrawRectangle(pen, SelectedRegion);

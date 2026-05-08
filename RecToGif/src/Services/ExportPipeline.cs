@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RecToGif.Editor;
@@ -31,20 +32,31 @@ namespace RecToGif.Services
 
             try
             {
-                for (int i = 0; i < frames.Count; i++)
+                int total = frames.Count;
+                int rendered = 0;
+                int degreeOfParallelism = Math.Max(1, Environment.ProcessorCount);
+                var parallelOptions = new ParallelOptions
                 {
-                    token.ThrowIfCancellationRequested();
-                    string renderedPath = await RenderFrameAsync(frames[i], settings, workDir, i);
-                    progress.Report((int)((float)i / frames.Count * 50));
-                }
+                    MaxDegreeOfParallelism = degreeOfParallelism,
+                    CancellationToken = token
+                };
 
+                await Parallel.ForAsync(0, total, parallelOptions, async (i, ct) =>
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await RenderFrameAsync(frames[i], settings, workDir, i);
+                    int done = Interlocked.Increment(ref rendered);
+                    progress.Report((int)((float)done / total * 100));
+                });
+
+                int fps = ComputeFps(frames);
                 switch (format.ToLower())
                 {
                     case "gif":
-                        await RenderGifAsync(workDir, outputPath, settings, progress, token);
+                        await RenderGifAsync(workDir, outputPath, settings, progress, token, fps);
                         break;
                     case "mp4":
-                        await RenderVideoAsync(workDir, outputPath, "mp4", settings, progress, token);
+                        await RenderVideoAsync(workDir, outputPath, "mp4", settings, progress, token, fps);
                         break;
                 }
             }
@@ -142,7 +154,24 @@ namespace RecToGif.Services
             return null;
         }
 
-        private async Task RenderGifAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token)
+        private static int ComputeFps(IReadOnlyList<FrameItem> frames)
+        {
+            if (frames.Count == 0) return 15;
+
+            var delays = frames
+                .Select(f => f.Metadata.DelayMs)
+                .Where(d => d > 0)
+                .OrderBy(d => d)
+                .ToList();
+
+            if (delays.Count == 0) return 15;
+
+            int medianDelay = delays[delays.Count / 2];
+            int fps = (int)Math.Round(1000.0 / medianDelay);
+            return Math.Clamp(fps, 1, 120);
+        }
+
+        private async Task RenderGifAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
             string gifskiPath = FindExecutable("gifski.exe", @"RecToGif\gifski", _appSettings.GifskiPath);
             if (gifskiPath == null)
@@ -150,7 +179,7 @@ namespace RecToGif.Services
 
             var psi = new ProcessStartInfo(gifskiPath)
             {
-                Arguments = $"-o \"{outputPath}\" \"{sourceDir}\\*.png\" --fps 15 --quality 90",
+                Arguments = $"-o \"{outputPath}\" \"{sourceDir}\\*.png\" --fps {fps} --quality 90",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardError = true,
@@ -168,14 +197,14 @@ namespace RecToGif.Services
             progress.Report(100);
         }
 
-        private async Task RenderVideoAsync(string sourceDir, string outputPath, string format, ProjectSettings settings, IProgress<int> progress, CancellationToken token)
+        private async Task RenderVideoAsync(string sourceDir, string outputPath, string format, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
             string ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
             if (ffmpegPath == null)
                 throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
-            
+
             // FFmpeg arguments for encoding PNG sequence to MP4
-            string args = $"-framerate 15 -i \"{sourceDir}\\%05d.png\" -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
+            string args = $"-framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
             
             var psi = new ProcessStartInfo(ffmpegPath)
             {

@@ -23,19 +23,20 @@ namespace RecToGif.Recorder
 
         public async Task SaveFrameAsync(Bitmap bitmap, FrameMeta meta)
         {
-            using (bitmap)
+            string frameName = meta.FrameIndex.ToString("D5");
+            string pngPath = Path.Combine(_outputDirectory, $"{frameName}.png");
+            string metaPath = Path.Combine(_outputDirectory, $"{frameName}.meta");
+
+            // Save PNG
+            await Task.Run(() =>
             {
-                string frameName = meta.FrameIndex.ToString("D5");
-                string pngPath = Path.Combine(_outputDirectory, $"{frameName}.png");
-                string metaPath = Path.Combine(_outputDirectory, $"{frameName}.meta");
+                bitmap.Save(pngPath, ImageFormat.Png);
+                bitmap.Dispose();
+            });
 
-                // Save PNG
-                await Task.Run(() => bitmap.Save(pngPath, ImageFormat.Png));
-
-                // Save Metadata
-                string json = JsonSerializer.Serialize(meta, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(metaPath, json);
-            }
+            // Save Metadata
+            string json = JsonSerializer.Serialize(meta, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(metaPath, json);
         }
     }
 }

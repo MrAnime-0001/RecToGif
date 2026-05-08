@@ -49,7 +49,14 @@ namespace RecToGif.Controls
             base.OnPaint(e);
             e.Graphics.TranslateTransform(this.AutoScrollPosition.X, this.AutoScrollPosition.Y);
 
-            for (int i = 0; i < _frames.Count; i++)
+            int scrollX = -this.AutoScrollPosition.X;
+            int visibleStartX = scrollX - (ThumbnailWidth + PaddingSize);
+            int visibleEndX = scrollX + this.ClientSize.Width + (ThumbnailWidth + PaddingSize);
+
+            int startIndex = Math.Max(0, visibleStartX / (ThumbnailWidth + PaddingSize));
+            int endIndex = Math.Min(_frames.Count, (visibleEndX / (ThumbnailWidth + PaddingSize)) + 1);
+
+            for (int i = startIndex; i < endIndex; i++)
             {
                 int x = i * (ThumbnailWidth + PaddingSize) + PaddingSize;
                 int y = PaddingSize;
@@ -67,7 +74,7 @@ namespace RecToGif.Controls
 
                 // Draw placeholder or thumbnail (actual loading should be async/cached)
                 e.Graphics.FillRectangle(Brushes.Black, rect);
-                
+
                 // Draw index
                 string indexStr = (i + 1).ToString();
                 e.Graphics.DrawString(indexStr, this.Font, Brushes.White, x + 2, y + 2);
