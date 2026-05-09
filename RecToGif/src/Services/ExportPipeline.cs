@@ -69,7 +69,7 @@ namespace RecToGif.Services
                     ct.ThrowIfCancellationRequested();
                     await RenderFrameAsync(frames[i], settings, workDir, i);
                     int done = Interlocked.Increment(ref rendered);
-                    progress.Report((int)((float)done / total * 100));
+                    progress.Report((int)((float)done / total * 90));
                 });
             }
             catch (OperationCanceledException)
@@ -88,6 +88,12 @@ namespace RecToGif.Services
                     break;
                 case "mp4":
                     await RenderVideoAsync(workDir, outputPath, "mp4", settings, progress, token, fps);
+                    break;
+                case "webm":
+                    await RenderVideoAsync(workDir, outputPath, "webm", settings, progress, token, fps);
+                    break;
+                case "webp":
+                    await RenderWebpAsync(workDir, outputPath, settings, progress, token, fps);
                     break;
             }
 
@@ -241,9 +247,50 @@ namespace RecToGif.Services
             if (ffmpegPath == null)
                 throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
 
-            // FFmpeg arguments for encoding PNG sequence to MP4
-            string args = $"-framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v libx264 -pix_fmt yuv420p \"{outputPath}\"";
-            
+            string codec = format switch
+            {
+                "mp4" => "libx264 -pix_fmt yuv420p",
+                "webm" => "libvpx-vp9 -b:v 0 -crf 30",
+                _ => "libx264 -pix_fmt yuv420p"
+            };
+
+            string args = $"-y -framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v {codec} \"{outputPath}\"";
+
+            var psi = new ProcessStartInfo(ffmpegPath)
+            {
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (var process = Process.Start(psi))
+            {
+                if (process != null)
+                {
+                    try { await process.WaitForExitAsync(token); }
+                    catch (OperationCanceledException) { process.Kill(); throw; }
+
+                    if (process.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to start ffmpeg process.");
+                }
+            }
+            progress.Report(100);
+        }
+
+        private async Task RenderWebpAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
+        {
+            string? ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
+            if (ffmpegPath == null)
+                throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
+
+            string args = $"-y -framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v libwebp_anim -lossless 0 -quality 80 -loop 0 \"{outputPath}\"";
+
             var psi = new ProcessStartInfo(ffmpegPath)
             {
                 Arguments = args,

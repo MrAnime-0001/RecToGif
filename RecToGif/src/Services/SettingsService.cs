@@ -9,10 +9,10 @@ namespace RecToGif.Services
     {
         private static readonly object _saveLock = new();
 
-        public static string BaseAppDataPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RecToGif");
-        public static string TempFolderPath => Path.Combine(BaseAppDataPath, "Temp");
-        public static string SettingsFilePath => Path.Combine(BaseAppDataPath, "settings.json");
-        public static string ShortcutMapFilePath => Path.Combine(BaseAppDataPath, "shortcuts.json");
+        private static string BasePath => Path.Combine(AppContext.BaseDirectory, "data");
+        public static string TempFolderPath => Path.Combine(BasePath, "Temp");
+        public static string SettingsFilePath => Path.Combine(BasePath, "settings.json");
+        public static string ShortcutMapFilePath => Path.Combine(BasePath, "shortcuts.json");
 
         /// <summary>
         /// Ensures the app data directory exists and removes any stale session folders
@@ -20,7 +20,7 @@ namespace RecToGif.Services
         /// </summary>
         public static void EnsureDirectoriesExist()
         {
-            if (!Directory.Exists(BaseAppDataPath)) Directory.CreateDirectory(BaseAppDataPath);
+            if (!Directory.Exists(BasePath)) Directory.CreateDirectory(BasePath);
             if (!Directory.Exists(TempFolderPath)) Directory.CreateDirectory(TempFolderPath);
 
             // Clean up orphaned GUID-named session folders older than 24 hours

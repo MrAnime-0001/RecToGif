@@ -2,15 +2,8 @@ namespace RecToGif.Forms
 {
     partial class EditorForm
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -23,12 +16,6 @@ namespace RecToGif.Forms
             base.Dispose(disposing);
         }
 
-        #region Windows Form Designer generated code
-
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this._toolStrip = new System.Windows.Forms.ToolStrip();
@@ -65,9 +52,17 @@ namespace RecToGif.Forms
             ((System.ComponentModel.ISupportInitialize)(this._numWidth)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this._numHeight)).BeginInit();
             this.SuspendLayout();
-            // 
+
+            Color bgDark = Color.FromArgb(30, 30, 30);
+            Color bgPanel = Color.FromArgb(45, 45, 45);
+            Color fgWhite = Color.FromArgb(220, 220, 220);
+            Color fgDim = Color.FromArgb(150, 150, 150);
+
+            //
             // _toolStrip
-            // 
+            //
+            this._toolStrip.BackColor = bgPanel;
+            this._toolStrip.ForeColor = fgWhite;
             this._toolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this._btnDelete,
             this._btnDuplicate,
@@ -93,213 +88,236 @@ namespace RecToGif.Forms
             this._btnExport});
             this._toolStrip.Location = new System.Drawing.Point(0, 0);
             this._toolStrip.Name = "_toolStrip";
-            this._toolStrip.Size = new System.Drawing.Size(1184, 25);
+            this._toolStrip.Size = new System.Drawing.Size(1184, 28);
             this._toolStrip.TabIndex = 3;
             this._toolStrip.Text = "toolStrip1";
-            // 
+            //
             // _btnDelete
-            // 
+            //
             this._btnDelete.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnDelete.ForeColor = fgWhite;
             this._btnDelete.Name = "_btnDelete";
-            this._btnDelete.Size = new System.Drawing.Size(44, 22);
+            this._btnDelete.Size = new System.Drawing.Size(44, 25);
             this._btnDelete.Text = "Delete";
             this._btnDelete.ToolTipText = "Delete selected frames (Del)";
-            // 
+            //
             // _btnDuplicate
-            // 
+            //
             this._btnDuplicate.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnDuplicate.ForeColor = fgWhite;
             this._btnDuplicate.Name = "_btnDuplicate";
-            this._btnDuplicate.Size = new System.Drawing.Size(61, 22);
+            this._btnDuplicate.Size = new System.Drawing.Size(61, 25);
             this._btnDuplicate.Text = "Duplicate";
             this._btnDuplicate.ToolTipText = "Duplicate selected frames (Ctrl+D)";
-            // 
+            //
             // _sep1
-            // 
+            //
             this._sep1.Name = "_sep1";
-            this._sep1.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep1.Size = new System.Drawing.Size(6, 28);
+            //
             // _btnMoveLeft
-            // 
+            //
             this._btnMoveLeft.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnMoveLeft.ForeColor = fgWhite;
             this._btnMoveLeft.Name = "_btnMoveLeft";
-            this._btnMoveLeft.Size = new System.Drawing.Size(64, 22);
+            this._btnMoveLeft.Size = new System.Drawing.Size(64, 25);
             this._btnMoveLeft.Text = "Move Left";
             this._btnMoveLeft.ToolTipText = "Move selected frames left (Alt+Left)";
-            // 
+            //
             // _btnMoveRight
-            // 
+            //
             this._btnMoveRight.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnMoveRight.ForeColor = fgWhite;
             this._btnMoveRight.Name = "_btnMoveRight";
-            this._btnMoveRight.Size = new System.Drawing.Size(73, 22);
+            this._btnMoveRight.Size = new System.Drawing.Size(73, 25);
             this._btnMoveRight.Text = "Move Right";
             this._btnMoveRight.ToolTipText = "Move selected frames right (Alt+Right)";
-            // 
+            //
             // _sep2
-            // 
+            //
             this._sep2.Name = "_sep2";
-            this._sep2.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep2.Size = new System.Drawing.Size(6, 28);
+            //
             // _lblDelay
-            // 
+            //
+            this._lblDelay.ForeColor = fgWhite;
             this._lblDelay.Name = "_lblDelay";
-            this._lblDelay.Size = new System.Drawing.Size(64, 22);
+            this._lblDelay.Size = new System.Drawing.Size(64, 25);
             this._lblDelay.Text = "Delay (ms):";
-            // 
+            //
             // _numDelay
-            // 
+            //
+            this._numDelay.BackColor = bgDark;
+            this._numDelay.ForeColor = fgWhite;
             this._numDelay.Location = new System.Drawing.Point(0, 0);
             this._numDelay.Maximum = new decimal(new int[] { 5000, 0, 0, 0 });
             this._numDelay.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
             this._numDelay.Name = "_numDelay";
             this._numDelay.Size = new System.Drawing.Size(60, 23);
             this._numDelay.Value = new decimal(new int[] { 100, 0, 0, 0 });
-            // 
+            //
             // _hostDelay
-            // 
+            //
             this._hostDelay.Name = "_hostDelay";
-            this._hostDelay.Size = new System.Drawing.Size(60, 22);
-            this._hostDelay.Text = "toolStripControlHost1";
-            // 
+            this._hostDelay.Size = new System.Drawing.Size(60, 25);
+            //
             // _btnApplyDelay
-            // 
+            //
             this._btnApplyDelay.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnApplyDelay.ForeColor = fgWhite;
             this._btnApplyDelay.Name = "_btnApplyDelay";
-            this._btnApplyDelay.Size = new System.Drawing.Size(42, 22);
+            this._btnApplyDelay.Size = new System.Drawing.Size(42, 25);
             this._btnApplyDelay.Text = "Apply";
             this._btnApplyDelay.ToolTipText = "Apply delay to selected frames";
-            // 
+            //
             // _sep3
-            // 
+            //
             this._sep3.Name = "_sep3";
-            this._sep3.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep3.Size = new System.Drawing.Size(6, 28);
+            //
             // _btnFindLoop
-            // 
+            //
             this._btnFindLoop.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnFindLoop.ForeColor = fgWhite;
             this._btnFindLoop.Name = "_btnFindLoop";
-            this._btnFindLoop.Size = new System.Drawing.Size(64, 22);
+            this._btnFindLoop.Size = new System.Drawing.Size(64, 25);
             this._btnFindLoop.Text = "Find Loop";
             this._btnFindLoop.ToolTipText = "Find looping section in frames (Ctrl+L)";
-            // 
+            //
             // _sep4
-            // 
+            //
             this._sep4.Name = "_sep4";
-            this._sep4.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep4.Size = new System.Drawing.Size(6, 28);
+            //
             // _btnCrop
-            // 
+            //
             this._btnCrop.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnCrop.ForeColor = fgWhite;
             this._btnCrop.Name = "_btnCrop";
-            this._btnCrop.Size = new System.Drawing.Size(37, 22);
+            this._btnCrop.Size = new System.Drawing.Size(37, 25);
             this._btnCrop.Text = "Crop";
             this._btnCrop.ToolTipText = "Toggle crop mode (C)";
-            // 
+            //
             // _btnApplyCrop
-            // 
+            //
             this._btnApplyCrop.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnApplyCrop.ForeColor = fgWhite;
             this._btnApplyCrop.Name = "_btnApplyCrop";
-            this._btnApplyCrop.Size = new System.Drawing.Size(70, 22);
+            this._btnApplyCrop.Size = new System.Drawing.Size(70, 25);
             this._btnApplyCrop.Text = "Apply Crop";
             this._btnApplyCrop.ToolTipText = "Apply crop selection";
-            // 
+            //
             // _sep5
-            // 
+            //
             this._sep5.Name = "_sep5";
-            this._sep5.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep5.Size = new System.Drawing.Size(6, 28);
+            //
             // _lblSize
-            // 
+            //
+            this._lblSize.ForeColor = fgWhite;
             this._lblSize.Name = "_lblSize";
-            this._lblSize.Size = new System.Drawing.Size(30, 22);
+            this._lblSize.Size = new System.Drawing.Size(30, 25);
             this._lblSize.Text = "Size:";
-            // 
+            //
             // _numWidth
-            // 
+            //
+            this._numWidth.BackColor = bgDark;
+            this._numWidth.ForeColor = fgWhite;
             this._numWidth.Location = new System.Drawing.Point(0, 0);
             this._numWidth.Maximum = new decimal(new int[] { 4096, 0, 0, 0 });
             this._numWidth.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
             this._numWidth.Name = "_numWidth";
             this._numWidth.Size = new System.Drawing.Size(50, 23);
             this._numWidth.Value = new decimal(new int[] { 800, 0, 0, 0 });
-            // 
+            //
             // _hostWidth
-            // 
+            //
             this._hostWidth.Name = "_hostWidth";
-            this._hostWidth.Size = new System.Drawing.Size(50, 22);
-            this._hostWidth.Text = "toolStripControlHost2";
-            // 
+            this._hostWidth.Size = new System.Drawing.Size(50, 25);
+            //
             // _lblX
-            // 
+            //
+            this._lblX.ForeColor = fgWhite;
             this._lblX.Name = "_lblX";
-            this._lblX.Size = new System.Drawing.Size(13, 22);
+            this._lblX.Size = new System.Drawing.Size(13, 25);
             this._lblX.Text = "x";
-            // 
+            //
             // _numHeight
-            // 
+            //
+            this._numHeight.BackColor = bgDark;
+            this._numHeight.ForeColor = fgWhite;
             this._numHeight.Location = new System.Drawing.Point(0, 0);
             this._numHeight.Maximum = new decimal(new int[] { 4096, 0, 0, 0 });
             this._numHeight.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
             this._numHeight.Name = "_numHeight";
             this._numHeight.Size = new System.Drawing.Size(50, 23);
             this._numHeight.Value = new decimal(new int[] { 600, 0, 0, 0 });
-            // 
+            //
             // _hostHeight
-            // 
+            //
             this._hostHeight.Name = "_hostHeight";
-            this._hostHeight.Size = new System.Drawing.Size(50, 22);
-            this._hostHeight.Text = "toolStripControlHost3";
-            // 
+            this._hostHeight.Size = new System.Drawing.Size(50, 25);
+            //
             // _btnResize
-            // 
+            //
             this._btnResize.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnResize.ForeColor = fgWhite;
             this._btnResize.Name = "_btnResize";
-            this._btnResize.Size = new System.Drawing.Size(43, 22);
+            this._btnResize.Size = new System.Drawing.Size(43, 25);
             this._btnResize.Text = "Resize";
             this._btnResize.ToolTipText = "Resize output (Ctrl+R)";
-            // 
+            //
             // _sep6
-            // 
+            //
             this._sep6.Name = "_sep6";
-            this._sep6.Size = new System.Drawing.Size(6, 25);
-            // 
+            this._sep6.Size = new System.Drawing.Size(6, 28);
+            //
             // _btnExport
             //
+            this._btnExport.BackColor = Color.FromArgb(0, 120, 200);
             this._btnExport.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this._btnExport.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this._btnExport.ForeColor = System.Drawing.Color.White;
             this._btnExport.Name = "_btnExport";
-            this._btnExport.Size = new System.Drawing.Size(45, 22);
+            this._btnExport.Size = new System.Drawing.Size(45, 25);
             this._btnExport.Text = "Export";
             this._btnExport.ToolTipText = "Export GIF or MP4 (Ctrl+E)";
             //
             // _previewPanel
-            // 
+            //
+            this._previewPanel.BackColor = bgDark;
             this._previewPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._previewPanel.Location = new System.Drawing.Point(0, 25);
+            this._previewPanel.Location = new System.Drawing.Point(0, 28);
             this._previewPanel.Name = "_previewPanel";
-            this._previewPanel.Size = new System.Drawing.Size(884, 609);
+            this._previewPanel.Size = new System.Drawing.Size(884, 606);
             this._previewPanel.TabIndex = 0;
-            // 
+            //
             // _loopFinderPanel
-            // 
+            //
+            this._loopFinderPanel.BackColor = bgPanel;
             this._loopFinderPanel.Dock = System.Windows.Forms.DockStyle.Right;
-            this._loopFinderPanel.Location = new System.Drawing.Point(884, 25);
+            this._loopFinderPanel.Location = new System.Drawing.Point(884, 28);
             this._loopFinderPanel.Name = "_loopFinderPanel";
-            this._loopFinderPanel.Size = new System.Drawing.Size(300, 609);
+            this._loopFinderPanel.Size = new System.Drawing.Size(300, 606);
             this._loopFinderPanel.TabIndex = 1;
             this._loopFinderPanel.Visible = false;
-            // 
+            //
             // _timeline
-            // 
+            //
+            this._timeline.BackColor = bgDark;
             this._timeline.Dock = System.Windows.Forms.DockStyle.Bottom;
             this._timeline.Location = new System.Drawing.Point(0, 634);
             this._timeline.Name = "_timeline";
             this._timeline.Size = new System.Drawing.Size(1184, 127);
             this._timeline.TabIndex = 2;
-            // 
+            //
             // EditorForm
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(28)))), ((int)(((byte)(28)))));
+            this.BackColor = bgDark;
+            this.ForeColor = fgWhite;
+            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.ClientSize = new System.Drawing.Size(1184, 761);
             this.Controls.Add(this._previewPanel);
             this.Controls.Add(this._loopFinderPanel);
@@ -317,8 +335,6 @@ namespace RecToGif.Forms
             this.PerformLayout();
 
         }
-
-        #endregion
 
         private RecToGif.Controls.PreviewPanel _previewPanel;
         private RecToGif.Controls.LoopFinderPanel _loopFinderPanel;

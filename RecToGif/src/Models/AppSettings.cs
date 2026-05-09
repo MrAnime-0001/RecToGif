@@ -1,3 +1,5 @@
+using System;
+using System.Drawing;
 using System.IO;
 using System.Text.Json;
 
@@ -11,11 +13,15 @@ namespace RecToGif.Models
         public bool CaptureCursor { get; set; } = true;
         public bool ShowInputOverlay { get; set; } = true;
         public string Theme { get; set; } = "Dark";
+        public Rectangle? LastRegion { get; set; }
         public string GifskiPath { get; set; } = string.Empty;
-        public string FfmpegPath { get; set; } = string.Empty;
+        public string FfmpegPath { get; set; } = @"C:\Program Files\FFmpeg\bin";
 
         public void Save(string path)
         {
+            var dir = Path.GetDirectoryName(path);
+            if (dir != null && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
             var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(path, json);
         }

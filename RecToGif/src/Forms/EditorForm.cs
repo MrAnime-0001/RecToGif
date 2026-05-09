@@ -43,14 +43,15 @@ namespace RecToGif.Forms
 
             _btnExport.Click += async (s, e) =>
             {
-                using (var sfd = new SaveFileDialog { Filter = "GIF|*.gif|MP4|*.mp4" })
+                using (var sfd = new SaveFileDialog { Filter = "GIF|*.gif|MP4|*.mp4|WebM|*.webm|WebP|*.webp" })
                 {
                     if (sfd.ShowDialog() == DialogResult.OK)
                     {
                         using (var dlg = new ExportProgressDialog())
                         {
-                            dlg.Show();
                             string format = Path.GetExtension(sfd.FileName).TrimStart('.');
+                            dlg.FormatLabel = $"Exporting {format.ToUpperInvariant()}...";
+                            dlg.Show();
                             try
                             {
                                 await _presenter.ExportAsync(sfd.FileName, format, dlg.Progress, dlg.Token);

@@ -18,17 +18,15 @@ namespace RecToGif.Presenters
 
         private GraphicsCaptureItem? _selectedItem;
         private System.Drawing.Rectangle? _selectedRegion;
-        // Cached consent item for region mode — static so it persists across recorder re-openings
-        // (picker only needs to be shown once per application session, not per recorder open)
         private static GraphicsCaptureItem? _regionConsentItem;
 
-        public string CurrentSourceDescription => _selectedItem != null 
-            ? $"Window: {_selectedItem.DisplayName}" 
+        public string CurrentSourceDescription => _selectedItem != null
+            ? $"Window: {_selectedItem.DisplayName}"
             : (_selectedRegion.HasValue ? $"Region: {_selectedRegion.Value.Width}x{_selectedRegion.Value.Height}" : "No source selected");
 
         public bool HasSource => _selectedItem != null || _selectedRegion.HasValue;
-
         public bool IsPaused { get; private set; }
+        public bool IsRecording => _engine != null;
 
         public RecorderPresenter(IRecorderView view)
         {
@@ -40,6 +38,29 @@ namespace RecToGif.Presenters
             _shortcutService.OnPauseRecording += (s, e) => TogglePause();
             _shortcutService.OnStopRecording += async (s, e) => await StopRecordingAsync();
             _shortcutService.OnDiscardRecording += (s, e) => DiscardRecording();
+
+            // Restore or create default region
+            var settings = SettingsService.LoadSettings();
+            if (settings.LastRegion.HasValue)
+            {
+                _selectedRegion = settings.LastRegion.Value;
+            }
+            else
+            {
+                // Default: 800x600 centered on primary screen
+                var screen = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
+                int w = Math.Min(800, screen.Width);
+                int h = Math.Min(600, screen.Height);
+                _selectedRegion = new System.Drawing.Rectangle(
+                    (screen.Width - w) / 2,
+                    (screen.Height - h) / 2,
+                    w, h
+                );
+                settings.LastRegion = _selectedRegion;
+                SettingsService.SaveSettings(settings);
+            }
+
+            _view.OnSourceChanged(CurrentSourceDescription!);
         }
 
         public void TogglePause()
@@ -47,13 +68,9 @@ namespace RecToGif.Presenters
             if (_engine == null) return;
 
             if (IsPaused)
-            {
                 ResumeRecording();
-            }
             else
-            {
                 PauseRecording();
-            }
         }
 
         public async Task SelectWindowAsync()
@@ -73,14 +90,25 @@ namespace RecToGif.Presenters
         {
             _selectedRegion = region;
             _selectedItem = null;
+
+            // Persist
+            var settings = SettingsService.LoadSettings();
+            settings.LastRegion = region;
+            SettingsService.SaveSettings(settings);
+
             _view.OnSourceChanged(CurrentSourceDescription);
         }
 
         public async Task StartRecordingAsync()
         {
-            if (HasSource && _engine != null)
+            if (_engine != null)
             {
-                TogglePause();
+                // Already recording — toggle pause
+                if (HasSource)
+                {
+                    TogglePause();
+                    return;
+                }
                 return;
             }
 
@@ -90,15 +118,10 @@ namespace RecToGif.Presenters
                 return;
             }
 
-            if (_engine != null) return; // Already recording
-
             GraphicsCaptureItem? item = _selectedItem;
 
             if (item == null && _selectedRegion.HasValue)
             {
-                // In region mode, the user already drew a region on the virtual screen.
-                // The picker must be shown at least once to get OS consent. After that,
-                // _regionConsentItem is reused so we don't ask the user to re-pick.
                 if (_regionConsentItem == null)
                 {
                     var picker = new GraphicsCapturePicker();
@@ -114,7 +137,7 @@ namespace RecToGif.Presenters
 
                 item = _regionConsentItem;
             }
-            
+
             if (item == null) return;
 
             SettingsService.EnsureDirectoriesExist();
@@ -129,8 +152,6 @@ namespace RecToGif.Presenters
 
             if (_selectedRegion.HasValue && _selectedItem == null)
             {
-                // We are capturing a monitor but only want a region
-                // We need to find the monitor's coordinates to offset the region
                 var screen = System.Windows.Forms.Screen.FromRectangle(_selectedRegion.Value);
                 _currentSession.TargetRegion = new System.Drawing.Rectangle(
                     _selectedRegion.Value.X - screen.Bounds.X,
@@ -146,7 +167,7 @@ namespace RecToGif.Presenters
 
             _engine = new RecorderEngine(_currentSession, _globalHook);
             _engine.Start(item);
-            
+
             IsPaused = false;
             _view.OnRecordingStarted();
         }
@@ -170,11 +191,11 @@ namespace RecToGif.Presenters
         public async Task StopRecordingAsync()
         {
             if (_engine == null) return;
-            
+
             _engine.Stop();
             _engine.Dispose();
             _engine = null;
-            
+
             if (_currentSession != null)
             {
                 bool success = await EditorPresenter.OpenWithSession(_currentSession.OutputDirectory);
@@ -225,4 +246,3 @@ namespace RecToGif.Presenters
         void ShowInlineMessage(string message);
     }
 }
-
