@@ -40,21 +40,27 @@ namespace RecToGif.Forms
             this._txtGifski = new System.Windows.Forms.TextBox();
             this._lblGifski = new System.Windows.Forms.Label();
             this._btnSave = new System.Windows.Forms.Button();
+            this._hotkeysTab = new System.Windows.Forms.TabPage();
+            this._hotkeysTable = new System.Windows.Forms.TableLayoutPanel();
+            this._hotkeyCaptureLabel = new System.Windows.Forms.Label();
+            this._btnResetHotkeys = new System.Windows.Forms.Button();
             this._tabControl.SuspendLayout();
             this._captureTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._numFps)).BeginInit();
             this._toolsTab.SuspendLayout();
+            this._hotkeysTab.SuspendLayout();
             this.SuspendLayout();
             // 
             // _tabControl
             // 
             this._tabControl.Controls.Add(this._captureTab);
             this._tabControl.Controls.Add(this._toolsTab);
+            this._tabControl.Controls.Add(this._hotkeysTab);
             this._tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this._tabControl.Location = new System.Drawing.Point(0, 0);
             this._tabControl.Name = "_tabControl";
             this._tabControl.SelectedIndex = 0;
-            this._tabControl.Size = new System.Drawing.Size(414, 251);
+            this._tabControl.Size = new System.Drawing.Size(464, 251);
             this._tabControl.TabIndex = 0;
             // 
             // _captureTab
@@ -151,12 +157,66 @@ namespace RecToGif.Forms
             this._lblGifski.TabIndex = 0;
             this._lblGifski.Text = "gifski.exe path:";
             // 
+            // 
+            // _hotkeysTab
+            // 
+            this._hotkeysTab.Controls.Add(this._btnResetHotkeys);
+            this._hotkeysTab.Controls.Add(this._hotkeysTable);
+            this._hotkeysTab.Location = new System.Drawing.Point(4, 24);
+            this._hotkeysTab.Name = "_hotkeysTab";
+            this._hotkeysTab.Padding = new System.Windows.Forms.Padding(3);
+            this._hotkeysTab.Size = new System.Drawing.Size(456, 223);
+            this._hotkeysTab.TabIndex = 2;
+            this._hotkeysTab.Text = "Hotkeys";
+            this._hotkeysTab.UseVisualStyleBackColor = true;
+            // 
+            // _hotkeysTable
+            // 
+            this._hotkeysTable.ColumnCount = 2;
+            this._hotkeysTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 160));
+            this._hotkeysTable.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120));
+            this._hotkeysTable.Dock = System.Windows.Forms.DockStyle.Top;
+            this._hotkeysTable.Location = new System.Drawing.Point(3, 3);
+            this._hotkeysTable.Name = "_hotkeysTable";
+            this._hotkeysTable.Padding = new System.Windows.Forms.Padding(5);
+            this._hotkeysTable.RowCount = 6;
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30));
+            this._hotkeysTable.Size = new System.Drawing.Size(450, 180);
+            this._hotkeysTable.TabIndex = 0;
+            // 
+            // _hotkeyCaptureLabel
+            // 
+            this._hotkeyCaptureLabel.AutoSize = true;
+            this._hotkeyCaptureLabel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this._hotkeyCaptureLabel.Location = new System.Drawing.Point(8, 205);
+            this._hotkeyCaptureLabel.Name = "_hotkeyCaptureLabel";
+            this._hotkeyCaptureLabel.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
+            this._hotkeyCaptureLabel.Size = new System.Drawing.Size(446, 18);
+            this._hotkeyCaptureLabel.TabIndex = 1;
+            this._hotkeyCaptureLabel.Text = "Click a text box, then press a key to rebind. Right-click to clear. Reset restores defaults.";
+            this._hotkeyCaptureLabel.ForeColor = System.Drawing.Color.Gray;
+            // 
+            // _btnResetHotkeys
+            // 
+            this._btnResetHotkeys.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this._btnResetHotkeys.Location = new System.Drawing.Point(3, 192);
+            this._btnResetHotkeys.Name = "_btnResetHotkeys";
+            this._btnResetHotkeys.Size = new System.Drawing.Size(450, 24);
+            this._btnResetHotkeys.TabIndex = 2;
+            this._btnResetHotkeys.Text = "Reset to Defaults";
+            this._btnResetHotkeys.UseVisualStyleBackColor = true;
+            // 
             // _btnSave
             // 
             this._btnSave.Dock = System.Windows.Forms.DockStyle.Bottom;
             this._btnSave.Location = new System.Drawing.Point(0, 251);
             this._btnSave.Name = "_btnSave";
-            this._btnSave.Size = new System.Drawing.Size(414, 30);
+            this._btnSave.Size = new System.Drawing.Size(464, 30);
             this._btnSave.TabIndex = 1;
             this._btnSave.Text = "Save";
             this._btnSave.UseVisualStyleBackColor = true;
@@ -165,7 +225,7 @@ namespace RecToGif.Forms
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(414, 281);
+            this.ClientSize = new System.Drawing.Size(464, 281);
             this.Controls.Add(this._tabControl);
             this.Controls.Add(this._btnSave);
             this.Name = "SettingsForm";
@@ -176,6 +236,7 @@ namespace RecToGif.Forms
             ((System.ComponentModel.ISupportInitialize)(this._numFps)).EndInit();
             this._toolsTab.ResumeLayout(false);
             this._toolsTab.PerformLayout();
+            this._hotkeysTab.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -185,6 +246,10 @@ namespace RecToGif.Forms
         private System.Windows.Forms.TabControl _tabControl;
         private System.Windows.Forms.TabPage _captureTab;
         private System.Windows.Forms.TabPage _toolsTab;
+        private System.Windows.Forms.TabPage _hotkeysTab;
+        private System.Windows.Forms.TableLayoutPanel _hotkeysTable;
+        private System.Windows.Forms.Label _hotkeyCaptureLabel;
+        private System.Windows.Forms.Button _btnResetHotkeys;
         private System.Windows.Forms.Label _lblFps;
         private System.Windows.Forms.NumericUpDown _numFps;
         private System.Windows.Forms.Label _lblGifski;

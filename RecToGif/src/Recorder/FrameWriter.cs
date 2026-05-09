@@ -28,11 +28,7 @@ namespace RecToGif.Recorder
             string metaPath = Path.Combine(_outputDirectory, $"{frameName}.meta");
 
             // Save PNG
-            await Task.Run(() =>
-            {
-                bitmap.Save(pngPath, ImageFormat.Png);
-                bitmap.Dispose();
-            });
+            await Task.Run(() => bitmap.Save(pngPath, ImageFormat.Png));
 
             // Save Metadata
             string json = JsonSerializer.Serialize(meta, new JsonSerializerOptions { WriteIndented = true });

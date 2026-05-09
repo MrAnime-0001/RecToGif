@@ -13,9 +13,12 @@ namespace RecToGif.Forms
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                components?.Dispose();
+                _timeline?.Dispose();
+                _previewPanel?.Dispose();
+                _loopFinderPanel?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -53,8 +56,6 @@ namespace RecToGif.Forms
             this._hostHeight = new System.Windows.Forms.ToolStripControlHost(this._numHeight);
             this._btnResize = new System.Windows.Forms.ToolStripButton();
             this._sep6 = new System.Windows.Forms.ToolStripSeparator();
-            this._btnText = new System.Windows.Forms.ToolStripButton();
-            this._sep7 = new System.Windows.Forms.ToolStripSeparator();
             this._btnExport = new System.Windows.Forms.ToolStripButton();
             this._previewPanel = new RecToGif.Controls.PreviewPanel();
             this._loopFinderPanel = new RecToGif.Controls.LoopFinderPanel();
@@ -89,8 +90,6 @@ namespace RecToGif.Forms
             this._hostHeight,
             this._btnResize,
             this._sep6,
-            this._btnText,
-            this._sep7,
             this._btnExport});
             this._toolStrip.Location = new System.Drawing.Point(0, 0);
             this._toolStrip.Name = "_toolStrip";
@@ -104,6 +103,7 @@ namespace RecToGif.Forms
             this._btnDelete.Name = "_btnDelete";
             this._btnDelete.Size = new System.Drawing.Size(44, 22);
             this._btnDelete.Text = "Delete";
+            this._btnDelete.ToolTipText = "Delete selected frames (Del)";
             // 
             // _btnDuplicate
             // 
@@ -111,6 +111,7 @@ namespace RecToGif.Forms
             this._btnDuplicate.Name = "_btnDuplicate";
             this._btnDuplicate.Size = new System.Drawing.Size(61, 22);
             this._btnDuplicate.Text = "Duplicate";
+            this._btnDuplicate.ToolTipText = "Duplicate selected frames (Ctrl+D)";
             // 
             // _sep1
             // 
@@ -123,6 +124,7 @@ namespace RecToGif.Forms
             this._btnMoveLeft.Name = "_btnMoveLeft";
             this._btnMoveLeft.Size = new System.Drawing.Size(64, 22);
             this._btnMoveLeft.Text = "Move Left";
+            this._btnMoveLeft.ToolTipText = "Move selected frames left (Alt+Left)";
             // 
             // _btnMoveRight
             // 
@@ -130,6 +132,7 @@ namespace RecToGif.Forms
             this._btnMoveRight.Name = "_btnMoveRight";
             this._btnMoveRight.Size = new System.Drawing.Size(73, 22);
             this._btnMoveRight.Text = "Move Right";
+            this._btnMoveRight.ToolTipText = "Move selected frames right (Alt+Right)";
             // 
             // _sep2
             // 
@@ -163,6 +166,7 @@ namespace RecToGif.Forms
             this._btnApplyDelay.Name = "_btnApplyDelay";
             this._btnApplyDelay.Size = new System.Drawing.Size(42, 22);
             this._btnApplyDelay.Text = "Apply";
+            this._btnApplyDelay.ToolTipText = "Apply delay to selected frames";
             // 
             // _sep3
             // 
@@ -175,6 +179,7 @@ namespace RecToGif.Forms
             this._btnFindLoop.Name = "_btnFindLoop";
             this._btnFindLoop.Size = new System.Drawing.Size(64, 22);
             this._btnFindLoop.Text = "Find Loop";
+            this._btnFindLoop.ToolTipText = "Find looping section in frames (Ctrl+L)";
             // 
             // _sep4
             // 
@@ -187,6 +192,7 @@ namespace RecToGif.Forms
             this._btnCrop.Name = "_btnCrop";
             this._btnCrop.Size = new System.Drawing.Size(37, 22);
             this._btnCrop.Text = "Crop";
+            this._btnCrop.ToolTipText = "Toggle crop mode (C)";
             // 
             // _btnApplyCrop
             // 
@@ -194,6 +200,7 @@ namespace RecToGif.Forms
             this._btnApplyCrop.Name = "_btnApplyCrop";
             this._btnApplyCrop.Size = new System.Drawing.Size(70, 22);
             this._btnApplyCrop.Text = "Apply Crop";
+            this._btnApplyCrop.ToolTipText = "Apply crop selection";
             // 
             // _sep5
             // 
@@ -248,30 +255,20 @@ namespace RecToGif.Forms
             this._btnResize.Name = "_btnResize";
             this._btnResize.Size = new System.Drawing.Size(43, 22);
             this._btnResize.Text = "Resize";
+            this._btnResize.ToolTipText = "Resize output (Ctrl+R)";
             // 
             // _sep6
             // 
             this._sep6.Name = "_sep6";
             this._sep6.Size = new System.Drawing.Size(6, 25);
             // 
-            // _btnText
-            // 
-            this._btnText.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this._btnText.Name = "_btnText";
-            this._btnText.Size = new System.Drawing.Size(32, 22);
-            this._btnText.Text = "Text";
-            //
-            // _sep7
-            //
-            this._sep7.Name = "_sep7";
-            this._sep7.Size = new System.Drawing.Size(6, 25);
-            //
             // _btnExport
             //
             this._btnExport.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this._btnExport.Name = "_btnExport";
             this._btnExport.Size = new System.Drawing.Size(45, 22);
             this._btnExport.Text = "Export";
+            this._btnExport.ToolTipText = "Export GIF or MP4 (Ctrl+E)";
             //
             // _previewPanel
             // 
@@ -350,9 +347,7 @@ namespace RecToGif.Forms
         private System.Windows.Forms.NumericUpDown _numHeight;
         private System.Windows.Forms.ToolStripControlHost _hostHeight;
         private System.Windows.Forms.ToolStripButton _btnResize;
-        private System.Windows.Forms.ToolStripSeparator _sep6;
-        private System.Windows.Forms.ToolStripButton _btnText;
-        private System.Windows.Forms.ToolStripSeparator _sep7 = null!;
+        private System.Windows.Forms.ToolStripSeparator _sep6 = null!;
         private System.Windows.Forms.ToolStripButton _btnExport = null!;
     }
 }

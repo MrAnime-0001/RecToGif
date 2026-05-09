@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 using RecToGif.Forms;
 using RecToGif.Presenters;
@@ -17,14 +18,14 @@ namespace RecToGif.Forms
             InitializeComponent();
             _presenter = new RecorderPresenter(this);
             SubscribeEvents();
-            
+
             _updateTimer = new System.Windows.Forms.Timer { Interval = 100 };
             _updateTimer.Tick += (s, e) => UpdateStatus();
         }
 
         private void SubscribeEvents()
         {
-            _btnSelectRegion.Click += (s, e) => 
+            _btnSelectRegion.Click += (s, e) =>
             {
                 this.Hide();
                 using (var overlay = new RegionSelectorOverlay())
@@ -51,7 +52,7 @@ namespace RecToGif.Forms
             {
                 _elapsedTime = DateTime.Now - _startTime;
             }
-            
+
             _lblStatus.Text = $"Frames: {_presenter.GetFrameCount()} | Time: {_elapsedTime:mm\\:ss\\.f}";
         }
 
@@ -110,5 +111,11 @@ namespace RecToGif.Forms
         {
             _lblStatus.Text = message;
         }
+
+        // --- IRecorderView: form position for region-capture monitor fix ---
+        public int FormWidth => Width;
+        public int FormHeight => Height;
+        public Point GetFormPosition() => Location;
+        public void SetFormPosition(Point pos) => Location = pos;
     }
-}
+}

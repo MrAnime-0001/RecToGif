@@ -11,12 +11,13 @@ namespace RecToGif.Editor
 
         public DeleteFramesCommand(IEnumerable<int> indices)
         {
+            // Sort descending so we delete from highest index first — prevents index shift during deletion
             _indicesToDelete = indices.OrderByDescending(i => i).ToList();
         }
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
-            _deletedItems = new List<(int, FrameItem)>();
+            _deletedItems = new List<(int Index, FrameItem Item)>();
             foreach (int index in _indicesToDelete)
             {
                 if (index >= 0 && index < frames.Count)
@@ -25,13 +26,14 @@ namespace RecToGif.Editor
                     frames.RemoveAt(index);
                 }
             }
-            // Reverse so we can restore in original order
-            _deletedItems.Reverse();
+            // DO NOT reverse — store in descending order (highest index first)
+            // On undo, insert in that same order so earlier insertions don't shift later target positions
         }
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
             if (_deletedItems == null) return;
+            // Insert in stored descending order: highest index first, so later lower-index inserts are unaffected
             foreach (var (index, item) in _deletedItems)
             {
                 frames.Insert(index, item);

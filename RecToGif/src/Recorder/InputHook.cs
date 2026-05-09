@@ -14,11 +14,11 @@ namespace RecToGif.Recorder
         private readonly ConcurrentQueue<InputEvent> _eventBuffer = new();
         private Thread? _hookThread;
         private bool _isRunning;
-        private int _hookThreadNativeId;
         private IntPtr _keyboardHookId = IntPtr.Zero;
         private IntPtr _mouseHookId = IntPtr.Zero;
         private LowLevelKeyboardProc? _keyboardProc;
         private LowLevelMouseProc? _mouseProc;
+        private ManualResetEvent _stopEvent = new(false);
 
         public event EventHandler<string>? ShortcutPressed;
 
@@ -81,11 +81,13 @@ namespace RecToGif.Recorder
             if (!_isRunning) return;
             _isRunning = false;
 
-            if (_hookThread != null && _hookThread.IsAlive && _hookThreadNativeId != 0)
+            _stopEvent.Set();
+
+            if (_hookThread != null && _hookThread.IsAlive)
             {
-                PostThreadMessage((uint)_hookThreadNativeId, 0x0012 /* WM_QUIT */, IntPtr.Zero, IntPtr.Zero);
-                _hookThread.Join(2000);
+                _hookThread.Join(5000);
             }
+            _stopEvent.Reset();
             _eventBuffer.Clear();
         }
 
@@ -96,7 +98,6 @@ namespace RecToGif.Recorder
 
         private void RunHookLoop()
         {
-            _hookThreadNativeId = GetCurrentThreadId();
             _keyboardProc = KeyboardHookCallback;
             _mouseProc = MouseHookCallback;
 
@@ -118,13 +119,45 @@ namespace RecToGif.Recorder
                 return;
             }
 
-            Application.Run();
+            RunMessagePump();
 
             if (_keyboardHookId != IntPtr.Zero) UnhookWindowsHookEx(_keyboardHookId);
             if (_mouseHookId != IntPtr.Zero) UnhookWindowsHookEx(_mouseHookId);
-            
+
             _keyboardHookId = IntPtr.Zero;
             _mouseHookId = IntPtr.Zero;
+        }
+
+        private void RunMessagePump()
+        {
+            while (_isRunning)
+            {
+                int waitResult = MsgWaitForMultipleObjects(new IntPtr[] { _stopEvent.SafeWaitHandle.DangerousGetHandle() }, false, 100, 0xff);
+                if (waitResult == -1)
+                {
+                    // WAIT_FAILED (-1) means the wait handle became invalid — exit
+                    break;
+                }
+                // Dispatch any pending WM messages (low-level hooks need a running message loop)
+                PeekMessage(out var msg, IntPtr.Zero, 0, 0, 0x01); // PM_REMOVE
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool PeekMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+
+        [DllImport("user32.dll")]
+        private static extern int MsgWaitForMultipleObjects(IntPtr[] handles, bool waitAll, int milliseconds, uint wakeMask);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MSG
+        {
+            public IntPtr hwnd;
+            public uint message;
+            public IntPtr wParam;
+            public IntPtr lParam;
+            public uint time;
+            public POINT pt;
         }
 
         private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -206,39 +239,26 @@ namespace RecToGif.Recorder
         public List<InputEvent> FlushEvents(long startTimestampMs, long endTimestampMs)
         {
             var events = new List<InputEvent>();
-            // Since we want to keep events that might belong to future frames, we can't just dequeue all.
-            // But usually, we process frames in order.
-            
-            // For simplicity, we'll take all events up to endTimestampMs.
-            // Any event with TimestampMs <= endTimestampMs is moved to the list.
-            
-            // This is slightly tricky with ConcurrentQueue if we want to leave some items.
-            // Maybe we can peek and dequeue if it matches.
-            
-            while (_eventBuffer.TryPeek(out var ev))
+            // Take all events with TimestampMs <= endTimestampMs.
+            // Dequeue in a single locked operation to avoid the peek/dequeue race
+            // where another thread could dequeue between TryPeek and TryDequeue.
+            lock (_eventBuffer)
             {
-                if (ev.TimestampMs <= endTimestampMs)
+                while (_eventBuffer.TryDequeue(out var ev))
                 {
-                    if (_eventBuffer.TryDequeue(out ev))
+                    if (ev.TimestampMs <= endTimestampMs && ev.TimestampMs >= startTimestampMs)
                     {
-                        if (ev.TimestampMs >= startTimestampMs)
-                        {
-                            events.Add(ev);
-                        }
+                        events.Add(ev);
                     }
                 }
-                else
-                {
-                    break;
-                }
             }
-
             return events;
         }
 
         public void Dispose()
         {
             Stop();
+            _stopEvent?.Dispose();
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -254,11 +274,6 @@ namespace RecToGif.Recorder
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
-        [DllImport("kernel32.dll")]
-        private static extern int GetCurrentThreadId();
 
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool PostThreadMessage(uint idThread, uint msg, IntPtr wParam, IntPtr lParam);
     }
 }

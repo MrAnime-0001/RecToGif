@@ -101,10 +101,20 @@ namespace RecToGif.Controls
             _resultsList.Items.Clear();
 
             var progress = new Progress<int>(v => _progressBar.Value = v);
+            var token = _cts.Token;
+
+            // Check if already cancelled (e.g., user clicked Find again immediately after Cancel)
+            if (token.IsCancellationRequested)
+            {
+                _btnFind.Text = "Find Loops";
+                _progressBar.Visible = false;
+                _cts = null;
+                return;
+            }
 
             try
             {
-                var results = await FindLoopsRequested((int)_minSpanInput.Value, (int)_maxSpanInput.Value, _thresholdSlider.Value, 64, progress, _cts.Token);
+                var results = await FindLoopsRequested((int)_minSpanInput.Value, (int)_maxSpanInput.Value, _thresholdSlider.Value, 64, progress, token);
                 foreach (var res in results)
                 {
                     _resultsList.Items.Add(res);

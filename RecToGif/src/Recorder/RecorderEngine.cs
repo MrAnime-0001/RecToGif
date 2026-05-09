@@ -137,8 +137,12 @@ namespace RecToGif.Recorder
 
         private void ProcessFrame(Direct3D11CaptureFrame frame)
         {
-            int captureWidth = _captureItem!.Size.Width;
-            int captureHeight = _captureItem!.Size.Height;
+            // Capture reference to avoid race with Stop() on another thread
+            var captureItem = _captureItem;
+            if (captureItem == null) return;
+
+            int captureWidth = captureItem.Size.Width;
+            int captureHeight = captureItem.Size.Height;
 
             int cropX = Math.Max(0, _session.TargetRegion.X);
             int cropY = Math.Max(0, _session.TargetRegion.Y);
@@ -147,10 +151,10 @@ namespace RecToGif.Recorder
 
             byte[] pixelData = CaptureSurfacePixels(frame.Surface, captureWidth, captureHeight, reuseBuffer: true);
 
-            var bitmap = new Bitmap(outWidth, outHeight, PixelFormat.Format32bppPArgb);
-            var bounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            // Use Format32bppArgb — BGRA source pixels from WinRT will be interpreted correctly
+            using var bitmap = new Bitmap(outWidth, outHeight, PixelFormat.Format32bppArgb);
+            var bounds = new Rectangle(0, 0, outWidth, outHeight);
             var bitmapData = bitmap.LockBits(bounds, ImageLockMode.WriteOnly, bitmap.PixelFormat);
-
             try
             {
                 int srcStride = captureWidth * 4;
@@ -187,19 +191,32 @@ namespace RecToGif.Recorder
 
             _lastFrameTimestampMs = currentTimestampMs;
 
+            // Clone the bitmap (non-using) and metadata so the background task owns
+            // independent copies. The Task.Run lambda disposes bitmapClone after the save.
+            // Note: bitmapClone is NOT 'using' — the lambda captures it and owns the dispose.
+            var bitmapClone = (Bitmap)bitmap.Clone();
+            var metaCopy = meta;
+
             var saveTask = Task.Run(async () =>
             {
-                try { await _frameWriter.SaveFrameAsync(bitmap, meta); }
+                try { await _frameWriter.SaveFrameAsync(bitmapClone, metaCopy); }
                 catch (Exception ex)
                 {
                     Interlocked.Increment(ref _saveErrorCount);
                     System.Diagnostics.Debug.WriteLine($"Save frame failed: {ex.Message}");
                 }
+                finally { bitmapClone?.Dispose(); }
             });
             lock (_pendingLock)
             {
                 _pendingSaveTasks.Add(saveTask);
+                // Prune completed tasks; cap list size to prevent unbounded growth
                 _pendingSaveTasks.RemoveAll(t => t.IsCompleted);
+                const int MaxPendingSaves = 100;
+                while (_pendingSaveTasks.Count > MaxPendingSaves)
+                {
+                    _pendingSaveTasks.RemoveAt(0);
+                }
             }
         }
 
@@ -259,7 +276,7 @@ namespace RecToGif.Recorder
 
             IntPtr inspectable = winrtObj.NativeObject.ThisPtr;
             Guid dxgiAccessGuid = new("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
-            int hr = Marshal.QueryInterface(inspectable, ref dxgiAccessGuid, out IntPtr dxgiAccess);
+            int hr = Marshal.QueryInterface(inspectable, in dxgiAccessGuid, out IntPtr dxgiAccess);
             Marshal.ThrowExceptionForHR(hr);
 
             try

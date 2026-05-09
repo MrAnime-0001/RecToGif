@@ -4,12 +4,12 @@ using System.Windows.Forms;
 
 namespace RecToGif.Forms
 {
-    public partial class RegionSelectorOverlay : Form
+    public sealed partial class RegionSelectorOverlay : Form
     {
         private Point _startPos;
         private bool _isSelecting = false;
         public Rectangle SelectedRegion { get; private set; }
-        internal readonly Font _font = new Font("Segoe UI", 12, FontStyle.Bold);
+        private readonly Font _font = new Font("Segoe UI", 12, FontStyle.Bold);
 
         public RegionSelectorOverlay()
         {

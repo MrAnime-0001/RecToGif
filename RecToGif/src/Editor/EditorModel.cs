@@ -90,8 +90,12 @@ namespace RecToGif.Editor
         public string Content { get; set; } = string.Empty; // Text or Image Path
         public Rectangle Bounds { get; set; }
         public Color Color { get; set; } = Color.White;
-        public Font? Font { get; set; }
+        public string FontName { get; set; } = "Arial";     // JSON-safe replacement for Font
+        public float FontSize { get; set; } = 12f;          // JSON-safe replacement for Font
         public float Opacity { get; set; } = 1.0f;
+
+        /// <summary>Resolves FontName/FontSize to a managed Font. Caller disposes.</summary>
+        public Font ToFont() => new Font(FontName, FontSize);
     }
 
     public class FrameItem

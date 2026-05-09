@@ -27,6 +27,9 @@ namespace RecToGif.Forms
         {
             _timeline.SelectionChanged += (s, e) => _presenter.OnSelectionChanged(_timeline.SelectedIndices);
             _timeline.FrameDoubleClicked += (s, index) => _presenter.OnFrameDoubleClicked(index);
+            _timeline.DeleteRequested += (s, e) => _presenter.DeleteSelectedFrames();
+            _timeline.UndoRequested += (s, e) => _presenter.Undo();
+            _timeline.RedoRequested += (s, e) => _presenter.Redo();
 
             _btnDelete.Click += (s, e) => _presenter.DeleteSelectedFrames();
             _btnDuplicate.Click += (s, e) => _presenter.DuplicateSelectedFrames();
@@ -37,11 +40,6 @@ namespace RecToGif.Forms
             _btnCrop.Click += (s, e) => _presenter.ToggleCropMode();
             _btnApplyCrop.Click += (s, e) => _presenter.ApplyCrop();
             _btnResize.Click += (s, e) => _presenter.Resize((int)_numWidth.Value, (int)_numHeight.Value);
-            _btnText.Click += (s, e) =>
-            {
-                string text = PromptForText("Enter text:", "Add Text Overlay");
-                if (!string.IsNullOrEmpty(text)) _presenter.AddTextOverlay(text);
-            };
 
             _btnExport.Click += async (s, e) =>
             {
@@ -90,28 +88,6 @@ namespace RecToGif.Forms
             _loopFinderPanel.PreviewLoopRequested += (s, range) => _presenter.PreviewLoop(range.Start, range.End);
             _loopFinderPanel.ApplyLoopRequested += (s, range) => _presenter.ApplyLoop(range.Start, range.End);
             _loopFinderPanel.CancelRequested += (s, e) => _loopFinderPanel.Visible = false;
-        }
-
-        private string PromptForText(string prompt, string title)
-        {
-            using (var dialog = new Form())
-            {
-                dialog.Text = title;
-                dialog.Size = new Size(300, 150);
-                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dialog.StartPosition = FormStartPosition.CenterParent;
-
-                var lbl = new Label { Text = prompt, Location = new Point(10, 10), Size = new Size(280, 20) };
-                var txt = new TextBox { Location = new Point(10, 40), Size = new Size(260, 25) };
-                var btn = new Button { Text = "OK", Location = new Point(190, 75), Size = new Size(80, 30), DialogResult = DialogResult.OK };
-
-                dialog.Controls.Add(txt);
-                dialog.Controls.Add(lbl);
-                dialog.Controls.Add(btn);
-                dialog.AcceptButton = btn;
-
-                return dialog.ShowDialog() == DialogResult.OK ? txt.Text : null;
-            }
         }
 
         // IEditorView

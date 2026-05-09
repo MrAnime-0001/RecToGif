@@ -76,6 +76,8 @@ namespace RecToGif.Editor
 
         private byte[] ProcessFrameForComparison(string path, int size)
         {
+            // Copy pixels into a managed array while the bitmap buffer is locked,
+            // then dispose the bitmap — the unsafe pointer must not outlive the lock.
             using (var original = Image.FromFile(path))
             using (var resized = new Bitmap(original, new Size(size, size)))
             {
@@ -84,13 +86,13 @@ namespace RecToGif.Editor
                 try
                 {
                     int byteCount = size * size;
-                    byte[] grayscale = new byte[byteCount];
+                    var grayscale = new byte[byteCount];
                     unsafe
                     {
                         byte* ptr = (byte*)data.Scan0;
                         for (int i = 0; i < byteCount; i++)
                         {
-                            // simple average for grayscale
+                            // Simple average for grayscale — pointer is valid for the locked duration
                             grayscale[i] = (byte)((ptr[i * 4] + ptr[i * 4 + 1] + ptr[i * 4 + 2]) / 3);
                         }
                     }

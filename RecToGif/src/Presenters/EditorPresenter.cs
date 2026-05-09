@@ -17,9 +17,11 @@ namespace RecToGif.Presenters
         private readonly IEditorView _view;
         private readonly EditorModel _model = new();
         private List<int> _selectedIndices = new();
+        public IReadOnlyList<int> SelectedIndices => _selectedIndices;
         
         private CancellationTokenSource? _playbackCts;
         private int _playbackIndex = 0;
+        private readonly object _playbackLock = new();
 
         public EditorPresenter(IEditorView view)
         {
@@ -165,9 +167,14 @@ namespace RecToGif.Presenters
                 {
                     if (_model.Frames.Count == 0) break;
 
-                    if (_playbackIndex > end || _playbackIndex < start) _playbackIndex = start;
+                    int index;
+                    lock (_playbackLock)
+                    {
+                        if (_playbackIndex > end || _playbackIndex < start) _playbackIndex = start;
+                        index = _playbackIndex;
+                    }
 
-                    var frame = _model.Frames[_playbackIndex];
+                    var frame = _model.Frames[index];
                     _view.InvokeIfRequired(() =>
                     {
                         _view.ShowFramePreview(frame);
@@ -179,7 +186,10 @@ namespace RecToGif.Presenters
                     int expectedElapsed = (_playbackIndex - start) * delayMs;
                     int adjust = Math.Max(0, delayMs - (int)(elapsed - expectedElapsed));
                     await Task.Delay(adjust, token);
-                    _playbackIndex++;
+                    lock (_playbackLock)
+                    {
+                        _playbackIndex++;
+                    }
                 }
             }
             catch (TaskCanceledException) { }

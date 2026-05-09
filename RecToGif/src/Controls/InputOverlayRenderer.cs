@@ -8,7 +8,7 @@ using RecToGif.Models;
 
 namespace RecToGif.Controls
 {
-    public class InputOverlayRenderer
+    public class InputOverlayRenderer : IDisposable
     {
         public Color PillColor { get; set; } = Color.FromArgb(180, 0, 0, 0);
         public Color TextColor { get; set; } = Color.White;
@@ -20,6 +20,12 @@ namespace RecToGif.Controls
         private Rectangle _cachedRect;
         private int _cachedRadius;
         private GraphicsPath? _cachedPath;
+
+        public void Dispose()
+        {
+            _cachedPath?.Dispose();
+            Font?.Dispose();
+        }
 
         public void Render(Graphics g, List<InputEvent> events, Size frameSize)
         {

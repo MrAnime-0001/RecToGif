@@ -20,14 +20,15 @@ namespace RecToGif.Services
         public ShortcutService(InputHook hook)
         {
             _hook = hook;
-            _map = ShortcutMap.GetDefault(); // TODO: Load from file
+            _map = SettingsService.LoadShortcuts();
             _hook.ShortcutPressed += HandleShortcut;
         }
 
         private void HandleShortcut(object? sender, string key)
         {
-            var action = _map.ActionToKey.FirstOrDefault(x => x.Value == key).Key;
-            
+            if (!_map.KeyToAction.TryGetValue(key, out var action))
+                return;
+
             switch (action)
             {
                 case "StartRecording":

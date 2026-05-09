@@ -241,8 +241,8 @@ namespace RecToGif.Controls
             if (overlay.Type == OverlayType.Text)
             {
                 using (var brush = new SolidBrush(Color.FromArgb((int)(overlay.Opacity * 255), overlay.Color)))
+                using (var font = overlay.ToFont())
                 {
-                    var font = overlay.Font ?? this.Font;
                     g.DrawString(overlay.Content, font, brush, screenBounds.Location);
                 }
             }
@@ -277,6 +277,7 @@ namespace RecToGif.Controls
             {
                 _currentImage?.Dispose();
                 _cachedWatermark?.Dispose();
+                _overlayRenderer?.Dispose();
             }
             base.Dispose(disposing);
         }

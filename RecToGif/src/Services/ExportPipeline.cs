@@ -14,7 +14,7 @@ namespace RecToGif.Services
     {
         private readonly AppSettings _appSettings;
 
-        public ExportPipeline(AppSettings appSettings = null)
+        public ExportPipeline(AppSettings? appSettings = null)
         {
             _appSettings = appSettings ?? new AppSettings();
         }
@@ -28,19 +28,42 @@ namespace RecToGif.Services
             CancellationToken token)
         {
             string workDir = Path.Combine(Path.GetTempPath(), "RecToGifExport_" + Guid.NewGuid());
+
+            // Estimate disk space needed: ~50 KB per rendered PNG frame + output file
+            long estimatedBytesPerFrame = 50 * 1024;
+            long estimatedTotal = frames.Count * estimatedBytesPerFrame + 10 * 1024 * 1024;
+
+            string? outputDrive = Path.GetPathRoot(outputPath);
+            if (!string.IsNullOrEmpty(outputDrive))
+            {
+                try
+                {
+                    var driveInfo = new DriveInfo(outputDrive);
+                    if (driveInfo.IsReady && driveInfo.AvailableFreeSpace < estimatedTotal)
+                    {
+                        long neededMb = estimatedTotal / (1024 * 1024);
+                        long availableMb = driveInfo.AvailableFreeSpace / (1024 * 1024);
+                        throw new InvalidOperationException(
+                            $"Not enough disk space on {driveInfo.Name}. Need ~{neededMb} MB but only {availableMb} MB available.");
+                    }
+                }
+                catch (ArgumentException) { } // Root path unreadable on some systems — skip check
+            }
+
             Directory.CreateDirectory(workDir);
+
+            int total = frames.Count;
+            int rendered = 0;
+            // Cap parallelism at 4 to avoid saturating I/O on many-core machines
+            int degreeOfParallelism = Math.Min(Math.Max(1, Environment.ProcessorCount), 4);
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = degreeOfParallelism,
+                CancellationToken = token
+            };
 
             try
             {
-                int total = frames.Count;
-                int rendered = 0;
-                int degreeOfParallelism = Math.Max(1, Environment.ProcessorCount);
-                var parallelOptions = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = degreeOfParallelism,
-                    CancellationToken = token
-                };
-
                 await Parallel.ForAsync(0, total, parallelOptions, async (i, ct) =>
                 {
                     ct.ThrowIfCancellationRequested();
@@ -48,22 +71,27 @@ namespace RecToGif.Services
                     int done = Interlocked.Increment(ref rendered);
                     progress.Report((int)((float)done / total * 100));
                 });
-
-                int fps = ComputeFps(frames);
-                switch (format.ToLower())
-                {
-                    case "gif":
-                        await RenderGifAsync(workDir, outputPath, settings, progress, token, fps);
-                        break;
-                    case "mp4":
-                        await RenderVideoAsync(workDir, outputPath, "mp4", settings, progress, token, fps);
-                        break;
-                }
             }
-            finally
+            catch (OperationCanceledException)
             {
-                Directory.Delete(workDir, true);
+                // Wait for any in-flight saves before deleting
+                await Task.Delay(500, CancellationToken.None);
+                try { Directory.Delete(workDir, true); } catch { }
+                throw;
             }
+
+            int fps = ComputeFps(frames);
+            switch (format.ToLower())
+            {
+                case "gif":
+                    await RenderGifAsync(workDir, outputPath, settings, progress, token, fps);
+                    break;
+                case "mp4":
+                    await RenderVideoAsync(workDir, outputPath, "mp4", settings, progress, token, fps);
+                    break;
+            }
+
+            try { Directory.Delete(workDir, true); } catch { }
         }
 
         private async Task<string> RenderFrameAsync(FrameItem frame, ProjectSettings settings, string workDir, int index)
@@ -111,8 +139,8 @@ namespace RecToGif.Services
             if (overlay.Type == OverlayType.Text)
             {
                 using (var brush = new SolidBrush(Color.FromArgb((int)(overlay.Opacity * 255), overlay.Color)))
+                using (var font = overlay.ToFont())
                 {
-                    var font = overlay.Font ?? new Font("Arial", 12);
                     g.DrawString(overlay.Content, font, brush, bounds.Location);
                 }
             }
@@ -131,7 +159,7 @@ namespace RecToGif.Services
             }
         }
 
-        private static string FindExecutable(string exeName, string localAppDataSubPath, string userPath = null)
+        private static string? FindExecutable(string exeName, string localAppDataSubPath, string? userPath = null)
         {
             if (!string.IsNullOrWhiteSpace(userPath) && File.Exists(userPath)) return userPath;
 
@@ -173,7 +201,7 @@ namespace RecToGif.Services
 
         private async Task RenderGifAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
-            string gifskiPath = FindExecutable("gifski.exe", @"RecToGif\gifski", _appSettings.GifskiPath);
+            string? gifskiPath = FindExecutable("gifski.exe", @"RecToGif\gifski", _appSettings.GifskiPath);
             if (gifskiPath == null)
                 throw new FileNotFoundException("gifski.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\gifski\\, or add it to PATH.");
 
@@ -192,6 +220,16 @@ namespace RecToGif.Services
                 {
                     try { await process.WaitForExitAsync(token); }
                     catch (OperationCanceledException) { process.Kill(); throw; }
+
+                    if (process.ExitCode != 0)
+                    {
+                        string stderr = await process.StandardError.ReadToEndAsync();
+                        throw new InvalidOperationException($"gifski exited with code {process.ExitCode}: {stderr}");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to start gifski process.");
                 }
             }
             progress.Report(100);
@@ -199,7 +237,7 @@ namespace RecToGif.Services
 
         private async Task RenderVideoAsync(string sourceDir, string outputPath, string format, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
-            string ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
+            string? ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
             if (ffmpegPath == null)
                 throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
 
@@ -219,6 +257,15 @@ namespace RecToGif.Services
                 {
                     try { await process.WaitForExitAsync(token); }
                     catch (OperationCanceledException) { process.Kill(); throw; }
+
+                    if (process.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("Failed to start ffmpeg process.");
                 }
             }
             progress.Report(100);

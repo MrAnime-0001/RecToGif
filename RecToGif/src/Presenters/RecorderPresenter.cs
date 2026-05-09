@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Windows.Graphics.Capture;
 using WinRT.Interop;
@@ -19,6 +18,9 @@ namespace RecToGif.Presenters
 
         private GraphicsCaptureItem? _selectedItem;
         private System.Drawing.Rectangle? _selectedRegion;
+        // Cached consent item for region mode — static so it persists across recorder re-openings
+        // (picker only needs to be shown once per application session, not per recorder open)
+        private static GraphicsCaptureItem? _regionConsentItem;
 
         public string CurrentSourceDescription => _selectedItem != null 
             ? $"Window: {_selectedItem.DisplayName}" 
@@ -94,38 +96,23 @@ namespace RecToGif.Presenters
 
             if (item == null && _selectedRegion.HasValue)
             {
-                // Get consent via picker first, then use CreateForMonitor for the monitor
-                var picker = new GraphicsCapturePicker();
-                InitializeWithWindow.Initialize(picker, _view.Handle);
-                var consentItem = await picker.PickSingleItemAsync();
-                if (consentItem == null)
+                // In region mode, the user already drew a region on the virtual screen.
+                // The picker must be shown at least once to get OS consent. After that,
+                // _regionConsentItem is reused so we don't ask the user to re-pick.
+                if (_regionConsentItem == null)
                 {
-                    _view.ShowInlineMessage("Capture consent denied.");
-                    return;
-                }
+                    var picker = new GraphicsCapturePicker();
+                    InitializeWithWindow.Initialize(picker, _view.Handle);
+                    _regionConsentItem = await picker.PickSingleItemAsync().AsTask().ConfigureAwait(true);
 
-                // Try to get monitor from region
-                var rect = new RECT
-                {
-                    Left = _selectedRegion.Value.Left,
-                    Top = _selectedRegion.Value.Top,
-                    Right = _selectedRegion.Value.Right,
-                    Bottom = _selectedRegion.Value.Bottom
-                };
-                IntPtr hMonitor = MonitorFromRect(ref rect, 2); // MONITOR_DEFAULTTONEAREST
-
-                if (hMonitor != IntPtr.Zero)
-                {
-                    try
+                    if (_regionConsentItem == null)
                     {
-                        item = CreateItemForMonitor(hMonitor);
-                    }
-                    catch (Exception ex)
-                    {
-                        _view.ShowInlineMessage("Failed to capture monitor: " + ex.Message);
+                        _view.ShowInlineMessage("Capture consent denied.");
                         return;
                     }
                 }
+
+                item = _regionConsentItem;
             }
             
             if (item == null) return;
@@ -219,60 +206,15 @@ namespace RecToGif.Presenters
         }
 
         public int GetFrameCount() => _engine?.FrameCount ?? 0;
-
-        #region Interop
-        [DllImport("user32.dll")]
-        private static extern IntPtr MonitorFromRect([In] ref RECT lprc, uint dwFlags);
-
-        [DllImport("combase.dll", PreserveSig = true, CharSet = CharSet.Unicode)]
-        private static extern int RoGetActivationFactory(string activatableClassId, ref Guid iid, out IntPtr factory);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
-
-        [ComImport]
-        [Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356")]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        private interface IGraphicsCaptureItemInterop
-        {
-            void CreateForWindow(
-                [In] IntPtr window,
-                [In] ref Guid iid,
-                [Out] out IntPtr result);
-
-            void CreateForMonitor(
-                [In] IntPtr monitor,
-                [In] ref Guid iid,
-                [Out] out IntPtr result);
-        }
-
-        private GraphicsCaptureItem CreateItemForMonitor(IntPtr hMonitor)
-        {
-            Guid interopIid = new Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356");
-            int hr = RoGetActivationFactory("Windows.Graphics.Capture.GraphicsCaptureItem", ref interopIid, out IntPtr factoryPtr);
-            Marshal.ThrowExceptionForHR(hr);
-
-            var interop = (IGraphicsCaptureItemInterop)Marshal.GetObjectForIUnknown(factoryPtr);
-            Marshal.Release(factoryPtr);
-
-            Guid iid = new Guid("79C3F95B-31F7-4EC2-A464-632EF5D30760");
-            interop.CreateForMonitor(hMonitor, ref iid, out IntPtr itemPtr);
-            Marshal.ReleaseComObject(interop);
-            try
-            {
-                return WinRT.MarshalInspectable<GraphicsCaptureItem>.FromAbi(itemPtr);
-            }
-            finally
-            {
-                Marshal.Release(itemPtr);
-            }
-        }
-        #endregion
     }
 
     public interface IRecorderView
     {
         IntPtr Handle { get; }
+        int FormWidth { get; }
+        int FormHeight { get; }
+        Point GetFormPosition();
+        void SetFormPosition(Point pos);
         void OnRecordingStarted();
         void OnRecordingPaused();
         void OnRecordingResumed();
