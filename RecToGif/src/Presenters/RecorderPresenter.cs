@@ -147,7 +147,8 @@ namespace RecToGif.Presenters
             _currentSession = new CaptureSession
             {
                 OutputDirectory = outputDir,
-                TargetFps = settings.DefaultFps
+                TargetFps = settings.DefaultFps,
+                CaptureCursor = settings.CaptureCursor
             };
 
             if (_selectedRegion.HasValue && _selectedItem == null)

@@ -173,21 +173,18 @@ namespace RecToGif.Recorder
                 bitmap.UnlockBits(bitmapData);
             }
 
-            var cursorState = CursorCapture.GetCurrentState();
             long currentTimestampMs = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
+            var cursorInfo = _session.CaptureCursor
+                ? CaptureCursorData()
+                : new Models.CursorInfo { Visible = false, X = 0, Y = 0, Type = "None" };
 
             var meta = new FrameMeta
             {
                 FrameIndex = Interlocked.Increment(ref _frameCount),
                 TimestampMs = (long)frame.SystemRelativeTime.TotalMilliseconds,
                 DelayMs = 1000 / _session.TargetFps,
-                Cursor = new Models.CursorInfo
-                {
-                    Visible = cursorState.IsVisible,
-                    X = cursorState.Position.X - _session.TargetRegion.X,
-                    Y = cursorState.Position.Y - _session.TargetRegion.Y,
-                    Type = "Default"
-                },
+                Cursor = cursorInfo,
                 InputEvents = _inputHook.FlushEvents(_lastFrameTimestampMs, currentTimestampMs)
             };
 
@@ -220,6 +217,18 @@ namespace RecToGif.Recorder
                     _pendingSaveTasks.RemoveAt(0);
                 }
             }
+        }
+
+        private Models.CursorInfo CaptureCursorData()
+        {
+            var cursorState = CursorCapture.GetCurrentState();
+            return new Models.CursorInfo
+            {
+                Visible = cursorState.IsVisible,
+                X = cursorState.Position.X - _session.TargetRegion.X,
+                Y = cursorState.Position.Y - _session.TargetRegion.Y,
+                Type = "Default"
+            };
         }
 
         private byte[] CaptureSurfacePixels(IDirect3DSurface surface, int width, int height, bool reuseBuffer = false)

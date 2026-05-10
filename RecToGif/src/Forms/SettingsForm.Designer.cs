@@ -60,6 +60,7 @@ namespace RecToGif.Forms
             // _captureTab
             //
             this._captureTab.BackColor = bgDark;
+            this._captureTab.Controls.Add(this._chkCaptureCursor);
             this._captureTab.Controls.Add(this._numFps);
             this._captureTab.Controls.Add(this._lblFps);
             this._captureTab.ForeColor = fgWhite;
@@ -88,6 +89,18 @@ namespace RecToGif.Forms
             this._lblFps.Size = new System.Drawing.Size(75, 15);
             this._lblFps.TabIndex = 0;
             this._lblFps.Text = "Capture FPS:";
+            //
+            // _chkCaptureCursor
+            //
+            this._chkCaptureCursor = new System.Windows.Forms.CheckBox();
+            this._chkCaptureCursor.AutoSize = true;
+            this._chkCaptureCursor.ForeColor = fgWhite;
+            this._chkCaptureCursor.Location = new System.Drawing.Point(10, 40);
+            this._chkCaptureCursor.Name = "_chkCaptureCursor";
+            this._chkCaptureCursor.Size = new System.Drawing.Size(220, 19);
+            this._chkCaptureCursor.TabIndex = 2;
+            this._chkCaptureCursor.Text = "Capture mouse cursor during recording";
+            this._chkCaptureCursor.UseVisualStyleBackColor = false;
             //
             // _toolsTab
             //
@@ -278,5 +291,6 @@ namespace RecToGif.Forms
         private System.Windows.Forms.TextBox _txtFfmpeg;
         private System.Windows.Forms.Button _btnBrowseFfmpeg;
         private System.Windows.Forms.Button _btnSave;
+        private System.Windows.Forms.CheckBox _chkCaptureCursor;
     }
 }

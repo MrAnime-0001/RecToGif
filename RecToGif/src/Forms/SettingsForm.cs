@@ -156,6 +156,7 @@ namespace RecToGif.Forms
         private void LoadSettingsIntoControls()
         {
             _numFps.Value = _settings.DefaultFps;
+            _chkCaptureCursor.Checked = _settings.CaptureCursor;
             _txtGifski.Text = _settings.GifskiPath;
             _txtFfmpeg.Text = _settings.FfmpegPath;
         }
@@ -175,6 +176,7 @@ namespace RecToGif.Forms
         private void SubscribeEvents()
         {
             _numFps.ValueChanged += (s, e) => _settings.DefaultFps = (int)_numFps.Value;
+            _chkCaptureCursor.CheckedChanged += (s, e) => _settings.CaptureCursor = _chkCaptureCursor.Checked;
 
             _btnBrowseGifski.Click += (s, e) =>
             {
