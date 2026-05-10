@@ -91,10 +91,13 @@ namespace RecToGif.Recorder
             IntPtr hdc = g.GetHdc();
             try
             {
-                DrawIconEx(hdc, 
-                    state.Position.X - offset.X - state.Hotspot.X, 
-                    state.Position.Y - offset.Y - state.Hotspot.Y, 
-                    state.Handle, 0, 0, 0, IntPtr.Zero, DI_NORMAL);
+                if (!DrawIconEx(hdc,
+                    state.Position.X - offset.X - state.Hotspot.X,
+                    state.Position.Y - offset.Y - state.Hotspot.Y,
+                    state.Handle, 0, 0, 0, IntPtr.Zero, DI_NORMAL))
+                {
+                    System.Diagnostics.Debug.WriteLine("[CursorCapture] DrawIconEx failed");
+                }
             }
             finally
             {

@@ -12,6 +12,7 @@ namespace RecToGif.Forms
     public partial class EditorForm : Form, IEditorView
     {
         private readonly EditorPresenter _presenter;
+        private bool _isExporting;
 
         public EditorForm()
         {
@@ -43,40 +44,49 @@ namespace RecToGif.Forms
 
             _btnExport.Click += async (s, e) =>
             {
-                using (var sfd = new SaveFileDialog { Filter = "GIF|*.gif|MP4|*.mp4|WebM|*.webm|WebP|*.webp" })
+                if (_isExporting) return;
+                _isExporting = true;
+                try
                 {
-                    if (sfd.ShowDialog() == DialogResult.OK)
+                    using (var sfd = new SaveFileDialog { Filter = "GIF|*.gif|MP4|*.mp4|WebM|*.webm|WebP|*.webp" })
                     {
-                        using (var dlg = new ExportProgressDialog())
+                        if (sfd.ShowDialog() == DialogResult.OK)
                         {
-                            string format = Path.GetExtension(sfd.FileName).TrimStart('.');
-                            dlg.FormatLabel = $"Exporting {format.ToUpperInvariant()}...";
-                            dlg.Show();
-                            try
+                            using (var dlg = new ExportProgressDialog())
                             {
-                                await _presenter.ExportAsync(sfd.FileName, format, dlg.Progress, dlg.Token);
-                            }
-                            catch (OperationCanceledException) { }
-                            catch (System.IO.FileNotFoundException ex)
-                            {
-                                var result = MessageBox.Show(
-                                    ex.Message + "\n\nOpen Settings to configure the path?",
-                                    "Export Failed",
-                                    MessageBoxButtons.YesNo,
-                                    MessageBoxIcon.Error);
-                                if (result == DialogResult.Yes)
-                                    new SettingsForm().ShowDialog(this);
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show(ex.Message, "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                            finally
-                            {
-                                dlg.Close();
+                                string format = Path.GetExtension(sfd.FileName).TrimStart('.');
+                                dlg.FormatLabel = $"Exporting {format.ToUpperInvariant()}...";
+                                dlg.Show();
+                                try
+                                {
+                                    await _presenter.ExportAsync(sfd.FileName, format, dlg.Progress, dlg.Token);
+                                }
+                                catch (OperationCanceledException) { }
+                                catch (System.IO.FileNotFoundException ex)
+                                {
+                                    var result = MessageBox.Show(
+                                        ex.Message + "\n\nOpen Settings to configure the path?",
+                                        "Export Failed",
+                                        MessageBoxButtons.YesNo,
+                                        MessageBoxIcon.Error);
+                                    if (result == DialogResult.Yes)
+                                        new SettingsForm().ShowDialog(this);
+                                }
+                                catch (Exception ex)
+                                {
+                                    MessageBox.Show(ex.Message, "Export Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
+                                finally
+                                {
+                                    dlg.Close();
+                                }
                             }
                         }
                     }
+                }
+                finally
+                {
+                    _isExporting = false;
                 }
             };
         }
@@ -102,6 +112,21 @@ namespace RecToGif.Forms
         {
             if (InvokeRequired) Invoke(action);
             else action();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.Z))
+            {
+                _presenter.Undo();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Y))
+            {
+                _presenter.Redo();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]

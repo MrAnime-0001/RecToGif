@@ -137,6 +137,8 @@ namespace RecToGif.Recorder
 
         private void ProcessFrame(Direct3D11CaptureFrame frame)
         {
+            if (_isPaused) return;
+
             // Capture reference to avoid race with Stop() on another thread
             var captureItem = _captureItem;
             if (captureItem == null) return;

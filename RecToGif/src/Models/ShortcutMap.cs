@@ -17,7 +17,7 @@ namespace RecToGif.Models
                 {
                     { "OpenRecorder", "F8" },
                     { "StartRecording", "F9" },
-                    { "PauseRecording", "F9" },
+                    { "PauseRecording", "Ctrl+F9" },
                     { "StopRecording", "F10" },
                     { "DiscardRecording", "F11" }
                 },
@@ -25,6 +25,7 @@ namespace RecToGif.Models
                 {
                     { "F8", "OpenRecorder" },
                     { "F9", "StartRecording" },
+                    { "Ctrl+F9", "PauseRecording" },
                     { "F10", "StopRecording" },
                     { "F11", "DiscardRecording" }
                 }

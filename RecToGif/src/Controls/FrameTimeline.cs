@@ -151,7 +151,12 @@ namespace RecToGif.Controls
                                 {
                                     int thumbX = frameIdx * (ThumbnailWidth + PaddingSize) + PaddingSize;
                                     this.Invalidate(new Rectangle(thumbX, PaddingSize, ThumbnailWidth, ThumbnailHeight));
+                                    bmp.Dispose();
                                 }));
+                            }
+                            else
+                            {
+                                bmp?.Dispose();
                             }
                         });
                     }

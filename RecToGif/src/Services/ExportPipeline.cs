@@ -100,37 +100,51 @@ namespace RecToGif.Services
             try { Directory.Delete(workDir, true); } catch { }
         }
 
-        private async Task<string> RenderFrameAsync(FrameItem frame, ProjectSettings settings, string workDir, int index)
+        private async Task<string?> RenderFrameAsync(FrameItem frame, ProjectSettings settings, string workDir, int index)
         {
-            using (var bmp = new Bitmap(frame.ImagePath))
+            try
             {
-                Rectangle crop = settings.CropRegion.IsEmpty ? new Rectangle(0, 0, bmp.Width, bmp.Height) : settings.CropRegion;
-                
-                var targetSize = settings.TargetSize.IsEmpty ? crop.Size : settings.TargetSize;
-                using (var output = new Bitmap(targetSize.Width, targetSize.Height))
-                using (var g = Graphics.FromImage(output))
+                if (!File.Exists(frame.ImagePath))
                 {
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(bmp, new Rectangle(0, 0, targetSize.Width, targetSize.Height), crop, GraphicsUnit.Pixel);
-
-                    foreach (var overlay in settings.Overlays)
-                    {
-                        DrawOverlay(g, overlay, 1.0f, 0, 0); // Simplified scaling
-                    }
-
-                    if (settings.BorderThickness > 0)
-                    {
-                        using (var pen = new Pen(settings.BorderColor, settings.BorderThickness))
-                        {
-                            pen.Alignment = System.Drawing.Drawing2D.PenAlignment.Inset;
-                            g.DrawRectangle(pen, 0, 0, targetSize.Width - 1, targetSize.Height - 1);
-                        }
-                    }
-
-                    string path = Path.Combine(workDir, $"{index:D5}.png");
-                    output.Save(path, System.Drawing.Imaging.ImageFormat.Png);
-                    return path;
+                    System.Diagnostics.Debug.WriteLine($"[Export] Frame {index} file not found: {frame.ImagePath}");
+                    return null;
                 }
+
+                using (var bmp = new Bitmap(frame.ImagePath))
+                {
+                    Rectangle crop = settings.CropRegion.IsEmpty ? new Rectangle(0, 0, bmp.Width, bmp.Height) : settings.CropRegion;
+
+                    var targetSize = settings.TargetSize.IsEmpty ? crop.Size : settings.TargetSize;
+                    using (var output = new Bitmap(targetSize.Width, targetSize.Height))
+                    using (var g = Graphics.FromImage(output))
+                    {
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g.DrawImage(bmp, new Rectangle(0, 0, targetSize.Width, targetSize.Height), crop, GraphicsUnit.Pixel);
+
+                        foreach (var overlay in settings.Overlays)
+                        {
+                            DrawOverlay(g, overlay, 1.0f, 0, 0); // Simplified scaling
+                        }
+
+                        if (settings.BorderThickness > 0)
+                        {
+                            using (var pen = new Pen(settings.BorderColor, settings.BorderThickness))
+                            {
+                                pen.Alignment = System.Drawing.Drawing2D.PenAlignment.Inset;
+                                g.DrawRectangle(pen, 0, 0, targetSize.Width - 1, targetSize.Height - 1);
+                            }
+                        }
+
+                        string path = Path.Combine(workDir, $"{index:D5}.png");
+                        output.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                        return path;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Export] Frame {index} render failed: {ex.Message}");
+                return null;
             }
         }
 
@@ -167,23 +181,20 @@ namespace RecToGif.Services
 
         private static string? FindExecutable(string exeName, string localAppDataSubPath, string? userPath = null)
         {
-            if (!string.IsNullOrWhiteSpace(userPath) && File.Exists(userPath)) return userPath;
+            if (!string.IsNullOrWhiteSpace(userPath))
+            {
+                if (!File.Exists(userPath)) return null;
+                string ext = Path.GetExtension(userPath);
+                if (!string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase))
+                    return null;
+                return userPath;
+            }
 
             string bundled = Path.Combine(AppContext.BaseDirectory, "tools", exeName);
             if (File.Exists(bundled)) return bundled;
 
             string local = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), localAppDataSubPath, exeName);
             if (File.Exists(local)) return local;
-
-            foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-            {
-                try
-                {
-                    var candidate = Path.Combine(dir.Trim(), exeName);
-                    if (File.Exists(candidate)) return candidate;
-                }
-                catch { }
-            }
 
             return null;
         }
@@ -219,6 +230,8 @@ namespace RecToGif.Services
                 RedirectStandardError = true,
                 RedirectStandardOutput = true
             };
+
+            ValidateOutputPath(outputPath);
 
             using (var process = Process.Start(psi))
             {
@@ -263,6 +276,8 @@ namespace RecToGif.Services
                 CreateNoWindow = true
             };
 
+            ValidateOutputPath(outputPath);
+
             using (var process = Process.Start(psi))
             {
                 if (process != null)
@@ -283,11 +298,19 @@ namespace RecToGif.Services
             progress.Report(100);
         }
 
+        private static void ValidateOutputPath(string outputPath)
+        {
+            if (outputPath.Contains('\"') || outputPath.Contains('\''))
+                throw new ArgumentException("Output path contains invalid characters.");
+        }
+
         private async Task RenderWebpAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
             string? ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
             if (ffmpegPath == null)
                 throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
+
+            ValidateOutputPath(outputPath);
 
             string args = $"-y -framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v libwebp_anim -lossless 0 -quality 80 -loop 0 \"{outputPath}\"";
 

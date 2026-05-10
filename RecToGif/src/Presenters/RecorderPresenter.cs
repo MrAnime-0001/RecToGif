@@ -219,9 +219,12 @@ namespace RecToGif.Presenters
                 _engine = null;
             }
 
-            if (_currentSession != null && System.IO.Directory.Exists(_currentSession.OutputDirectory))
+            var dir = _currentSession?.OutputDirectory;
+            _currentSession = null;
+
+            if (dir != null && System.IO.Directory.Exists(dir))
             {
-                System.IO.Directory.Delete(_currentSession.OutputDirectory, true);
+                System.IO.Directory.Delete(dir, true);
             }
             _view.OnRecordingDiscarded();
         }

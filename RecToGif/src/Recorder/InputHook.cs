@@ -239,17 +239,11 @@ namespace RecToGif.Recorder
         public List<InputEvent> FlushEvents(long startTimestampMs, long endTimestampMs)
         {
             var events = new List<InputEvent>();
-            // Take all events with TimestampMs <= endTimestampMs.
-            // Dequeue in a single locked operation to avoid the peek/dequeue race
-            // where another thread could dequeue between TryPeek and TryDequeue.
-            lock (_eventBuffer)
+            while (_eventBuffer.TryDequeue(out var ev))
             {
-                while (_eventBuffer.TryDequeue(out var ev))
+                if (ev.TimestampMs <= endTimestampMs && ev.TimestampMs >= startTimestampMs)
                 {
-                    if (ev.TimestampMs <= endTimestampMs && ev.TimestampMs >= startTimestampMs)
-                    {
-                        events.Add(ev);
-                    }
+                    events.Add(ev);
                 }
             }
             return events;

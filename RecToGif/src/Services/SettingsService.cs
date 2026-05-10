@@ -65,7 +65,13 @@ namespace RecToGif.Services
             return sessionPath;
         }
 
-        public static AppSettings LoadSettings() => AppSettings.Load(SettingsFilePath);
+        public static AppSettings LoadSettings()
+        {
+            lock (_saveLock)
+            {
+                return AppSettings.Load(SettingsFilePath);
+            }
+        }
 
         public static void SaveSettings(AppSettings settings)
         {

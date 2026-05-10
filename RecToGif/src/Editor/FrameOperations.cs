@@ -96,7 +96,11 @@ namespace RecToGif.Editor
 
             if (_direction == -1) // Move Left
             {
-                if (_indicesToMove.First() == 0) return;
+                if (_indicesToMove.First() == 0)
+                {
+                    _newIndices = _indicesToMove.ToList();
+                    return;
+                }
                 foreach (int index in _indicesToMove)
                 {
                     var item = frames[index];
