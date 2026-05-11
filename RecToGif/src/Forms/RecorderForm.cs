@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using RecToGif.Presenters;
 
 namespace RecToGif.Forms
@@ -16,10 +17,12 @@ namespace RecToGif.Forms
 
         private static readonly Color FgDim = Color.FromArgb(150, 150, 150);
 
-        public RecorderForm()
+        public RecorderForm(
+            RecorderPresenter presenter)
         {
             InitializeComponent();
-            _presenter = new RecorderPresenter(this);
+            _presenter = presenter;
+            _presenter.View = this;
             SubscribeEvents();
 
             _updateTimer = new System.Windows.Forms.Timer { Interval = 100 };
@@ -34,7 +37,7 @@ namespace RecToGif.Forms
             _btnSelectRegion.Click += (s, e) =>
             {
                 this.Hide();
-                using (var overlay = new RegionSelectorOverlay())
+                using (var overlay = new RegionSelectorOverlay(Program.ServiceProvider.GetRequiredService<Services.ISettingsService>()))
                 {
                     if (overlay.ShowDialog() == DialogResult.OK)
                     {
@@ -58,7 +61,8 @@ namespace RecToGif.Forms
             _btnSettings.Click += (s, e) =>
             {
                 this.TopMost = false;
-                new SettingsForm().ShowDialog(this);
+                var settingsForm = Program.ServiceProvider.GetRequiredService<Forms.SettingsForm>();
+                settingsForm.ShowDialog(this);
                 this.TopMost = true;
             };
         }

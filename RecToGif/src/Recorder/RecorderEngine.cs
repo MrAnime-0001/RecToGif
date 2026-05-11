@@ -18,7 +18,7 @@ using Device = SharpDX.Direct3D11.Device;
 
 namespace RecToGif.Recorder
 {
-    public class RecorderEngine : IDisposable
+    public class RecorderEngine : IRecorderEngine
     {
         private GraphicsCaptureItem? _captureItem;
         private Direct3D11CaptureFramePool? _framePool;
@@ -28,7 +28,7 @@ namespace RecToGif.Recorder
 
         private readonly FrameWriter _frameWriter;
         private readonly CaptureSession _session;
-        private readonly InputHook _inputHook;
+        private readonly IInputHook _inputHook;
         private int _frameCount = 0;
         private volatile bool _isRecording = false;
         private volatile bool _isPaused = false;
@@ -39,10 +39,14 @@ namespace RecToGif.Recorder
         private int _pixelBufferWidth = 0;
         private int _pixelBufferHeight = 0;
         private int _saveErrorCount = 0;
+        private int _droppedFrameCount = 0;
+        private CancellationTokenSource? _stopCts;
+        private volatile bool _disposed = false;
 
         public int FrameCount => _frameCount;
+        public int DroppedFrameCount => _droppedFrameCount;
 
-        public RecorderEngine(CaptureSession session, InputHook inputHook)
+        public RecorderEngine(CaptureSession session, IInputHook inputHook)
         {
             _session = session;
             _inputHook = inputHook;
@@ -71,6 +75,7 @@ namespace RecToGif.Recorder
             _captureItem = item;
             _captureItem.Closed += (s, e) => Stop();
 
+            _stopCts = new CancellationTokenSource();
             _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(
                 _winrtDevice,
                 DirectXPixelFormat.B8G8R8A8UIntNormalized,
@@ -104,6 +109,7 @@ namespace RecToGif.Recorder
         {
             _isRecording = false;
             _isPaused = false;
+            _stopCts?.Cancel();
             _captureSession?.Dispose();
             _framePool?.Dispose();
             _captureItem = null;
@@ -122,12 +128,25 @@ namespace RecToGif.Recorder
             {
                 Task.WaitAll(pending, TimeSpan.FromSeconds(10));
             }
-            catch (AggregateException) { }
+            catch (AggregateException ae)
+            {
+                // Rethrow critical exceptions that should not be swallowed
+                foreach (var inner in ae.InnerExceptions)
+                {
+                    if (inner is OutOfMemoryException || inner is AccessViolationException)
+                        throw;
+                }
+                System.Diagnostics.Debug.WriteLine($"[RecorderEngine] Pending save task failed (non-critical): {ae.InnerExceptions.Count} error(s)");
+            }
         }
 
         private void OnFrameArrived(Direct3D11CaptureFramePool sender, object args)
         {
-            if (!_isRecording || _isPaused) return;
+            if (!_isRecording || _isPaused || _disposed) return;
+
+            // Use a local CTS check to detect Stop() race — if cancelled, the frame pool is gone
+            var cts = _stopCts;
+            if (cts == null || cts.IsCancellationRequested) return;
 
             using var frame = sender.TryGetNextFrame();
             if (frame == null) return;
@@ -177,7 +196,7 @@ namespace RecToGif.Recorder
 
             var cursorInfo = _session.CaptureCursor
                 ? CaptureCursorData()
-                : new Models.CursorInfo { Visible = false, X = 0, Y = 0, Type = "None" };
+                : new Models.CursorInfo { Visible = false, X = -_session.TargetRegion.X, Y = -_session.TargetRegion.Y, Type = "None" };
 
             var meta = new FrameMeta
             {
@@ -215,6 +234,7 @@ namespace RecToGif.Recorder
                 while (_pendingSaveTasks.Count > MaxPendingSaves)
                 {
                     _pendingSaveTasks.RemoveAt(0);
+                    Interlocked.Increment(ref _droppedFrameCount);
                 }
             }
         }
@@ -310,7 +330,10 @@ namespace RecToGif.Recorder
 
         public void Dispose()
         {
+            _disposed = true;
             Stop();
+            _stopCts?.Dispose();
+            _stopCts = null;
             _winrtDevice?.Dispose();
             _d3dDevice?.Dispose();
         }

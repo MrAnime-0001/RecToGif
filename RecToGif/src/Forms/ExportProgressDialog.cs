@@ -30,9 +30,11 @@ namespace RecToGif.Forms
         {
             if (InvokeRequired)
             {
-                Invoke(new Action<int>(UpdateProgress), percent);
+                if (IsDisposed) return;
+                BeginInvoke(new Action<int>(UpdateProgress), percent);
                 return;
             }
+            if (IsDisposed) return;
             _progressBar.Value = Math.Clamp(percent, 0, 100);
             _lblStatus.Text = $"{percent}% complete";
         }
@@ -41,9 +43,11 @@ namespace RecToGif.Forms
         {
             if (InvokeRequired)
             {
-                Invoke(new Action<string>(SetStatus), text);
+                if (IsDisposed) return;
+                BeginInvoke(new Action<string>(SetStatus), text);
                 return;
             }
+            if (IsDisposed) return;
             _lblStatus.Text = text;
         }
     }

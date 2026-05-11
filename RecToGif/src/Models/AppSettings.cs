@@ -15,7 +15,7 @@ namespace RecToGif.Models
         public string Theme { get; set; } = "Dark";
         public Rectangle? LastRegion { get; set; }
         public string GifskiPath { get; set; } = string.Empty;
-        public string FfmpegPath { get; set; } = @"C:\Program Files\FFmpeg\bin";
+        public string FfmpegPath { get; set; } = string.Empty;
 
         public void Save(string path)
         {

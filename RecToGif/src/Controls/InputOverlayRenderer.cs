@@ -13,7 +13,19 @@ namespace RecToGif.Controls
         public Color PillColor { get; set; } = Color.FromArgb(180, 0, 0, 0);
         public Color TextColor { get; set; } = Color.White;
         public float Opacity { get; set; } = 0.7f;
-        public Font Font { get; set; } = new Font("Segoe UI", 12, FontStyle.Bold);
+        private Font _font = new Font("Segoe UI", 12, FontStyle.Bold);
+        public Font Font
+        {
+            get => _font;
+            set
+            {
+                if (_font != value)
+                {
+                    _font?.Dispose();
+                    _font = value;
+                }
+            }
+        }
         public int Padding { get; set; } = 10;
         public int CornerRadius { get; set; } = 15;
 
@@ -24,7 +36,7 @@ namespace RecToGif.Controls
         public void Dispose()
         {
             _cachedPath?.Dispose();
-            Font?.Dispose();
+            _font?.Dispose();
         }
 
         public void Render(Graphics g, List<InputEvent> events, Size frameSize)

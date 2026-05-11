@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using RecToGif.Editor;
 using RecToGif.Forms;
 using RecToGif.Services;
@@ -14,18 +15,30 @@ namespace RecToGif.Presenters
 {
     public class EditorPresenter
     {
-        private readonly IEditorView _view;
+        private IEditorView? _view;
+        private readonly ISettingsService _settingsService;
+        private readonly IExportPipeline _exportPipeline;
         private readonly EditorModel _model = new();
         private List<int> _selectedIndices = new();
         public IReadOnlyList<int> SelectedIndices => _selectedIndices;
-        
+
         private CancellationTokenSource? _playbackCts;
         private int _playbackIndex = 0;
         private readonly object _playbackLock = new();
 
-        public EditorPresenter(IEditorView view)
+        public EditorPresenter(ISettingsService settingsService, IExportPipeline exportPipeline)
         {
-            _view = view;
+            _settingsService = settingsService;
+            _exportPipeline = exportPipeline;
+        }
+
+        public IEditorView View
+        {
+            set
+            {
+                _view = value;
+                RefreshView();
+            }
         }
 
         public static async Task<bool> OpenWithSession(string path)
@@ -43,9 +56,13 @@ namespace RecToGif.Presenters
                 return false;
             }
 
-            var form = new EditorForm();
+            var form = Program.ServiceProvider.GetRequiredService<Forms.EditorForm>();
             await form.LoadSession(path);
-            form.FormClosed += (s, e) => Application.Exit();
+            form.FormClosed += (s, e) =>
+            {
+                if (Application.OpenForms.Count == 0)
+                    Application.Exit();
+            };
             form.Show();
             return true;
         }
@@ -61,7 +78,7 @@ namespace RecToGif.Presenters
             _selectedIndices = indices.ToList();
             if (_selectedIndices.Count > 0)
             {
-                _view.ShowFramePreview(_model.Frames[_selectedIndices[0]]);
+                _view!.ShowFramePreview(_model.Frames[_selectedIndices[0]]);
             }
         }
 
@@ -75,6 +92,15 @@ namespace RecToGif.Presenters
             if (_selectedIndices.Count == 0) return;
             StopPlayback();
             var command = new DeleteFramesCommand(_selectedIndices);
+            _model.ExecuteCommand(command);
+            RefreshView();
+        }
+
+        public void DeleteFrames(IReadOnlyList<int> indices)
+        {
+            if (indices.Count == 0) return;
+            StopPlayback();
+            var command = new DeleteFramesCommand(indices);
             _model.ExecuteCommand(command);
             RefreshView();
         }
@@ -121,12 +147,12 @@ namespace RecToGif.Presenters
 
         private void RefreshView()
         {
-            _view.DisplayFrames(_model.Frames);
-            _view.Overlays = _model.ProjectSettings.Overlays;
+            _view!.DisplayFrames(_model.Frames);
+            _view!.Overlays = _model.ProjectSettings.Overlays;
             _selectedIndices.Clear();
             if (_model.Frames.Count > 0)
             {
-                _view.ShowFramePreview(_model.Frames[0]);
+                _view!.ShowFramePreview(_model.Frames[0]);
             }
         }
 
@@ -154,7 +180,7 @@ namespace RecToGif.Presenters
         {
             _playbackCts?.Cancel();
             _playbackCts = null;
-            _view.InvokeIfRequired(() => _view.SetPlaybackMode(false));
+            _view!.InvokeIfRequired(() => _view!.SetPlaybackMode(false));
         }
 
         private async Task PlaybackLoop(CancellationToken token, int start, int end)
@@ -175,10 +201,10 @@ namespace RecToGif.Presenters
                     }
 
                     var frame = _model.Frames[index];
-                    _view.InvokeIfRequired(() =>
+                    _view!.InvokeIfRequired(() =>
                     {
-                        _view.ShowFramePreview(frame);
-                        _view.SetPlaybackMode(true);
+                        _view!.ShowFramePreview(frame);
+                        _view!.SetPlaybackMode(true);
                     });
 
                     int delayMs = frame.Metadata.DelayMs;
@@ -219,19 +245,19 @@ namespace RecToGif.Presenters
         // Crop
         public void ToggleCropMode()
         {
-            _view.IsCropping = !_view.IsCropping;
-            if (_view.IsCropping)
+            _view!.IsCropping = !_view!.IsCropping;
+            if (_view!.IsCropping)
             {
-                _view.CropRegion = _model.ProjectSettings.CropRegion;
+                _view!.CropRegion = _model.ProjectSettings.CropRegion;
             }
         }
 
         public void ApplyCrop()
         {
-            var newCrop = _view.GetFinalCrop();
+            var newCrop = _view!.GetFinalCrop();
             var command = new CropCommand(newCrop);
             _model.ExecuteCommand(command);
-            _view.IsCropping = false;
+            _view!.IsCropping = false;
         }
 
         // Resize
@@ -274,9 +300,7 @@ namespace RecToGif.Presenters
         // Export
         public async Task ExportAsync(string outputPath, string format, IProgress<int> progress, CancellationToken token)
         {
-            var appSettings = SettingsService.LoadSettings();
-            var pipeline = new ExportPipeline(appSettings);
-            await pipeline.ExportAsync(outputPath, format, _model.Frames, _model.ProjectSettings, progress, token);
+            await _exportPipeline.ExportAsync(outputPath, format, _model.Frames, _model.ProjectSettings, progress, token);
         }
 
         // Border

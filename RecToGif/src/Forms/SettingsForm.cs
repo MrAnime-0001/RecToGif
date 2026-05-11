@@ -12,6 +12,7 @@ namespace RecToGif.Forms
 {
     public partial class SettingsForm : Form
     {
+        private readonly ISettingsService _settingsService;
         private AppSettings _settings;
         private ShortcutMap _shortcuts;
         // Maps hotkey TextBox -> action name
@@ -19,10 +20,11 @@ namespace RecToGif.Forms
         // Saved on LoadShortcuts so Reset can restore defaults
         private ShortcutMap _originalShortcuts;
 
-        public SettingsForm()
+        public SettingsForm(ISettingsService settingsService)
         {
-            _settings = SettingsService.LoadSettings();
-            _shortcuts = SettingsService.LoadShortcuts();
+            _settingsService = settingsService;
+            _settings = _settingsService.LoadSettings();
+            _shortcuts = _settingsService.LoadShortcuts();
             _originalShortcuts = ShortcutMap.GetDefault(); // keep a copy of defaults for Reset
 
             InitializeComponent();
@@ -226,8 +228,8 @@ namespace RecToGif.Forms
                     }
                 }
 
-                SettingsService.SaveSettings(_settings);
-                SettingsService.SaveShortcuts(_shortcuts);
+                _settingsService.SaveSettings(_settings);
+                _settingsService.SaveShortcuts(_shortcuts);
                 this.Close();
             };
 

@@ -9,7 +9,7 @@ using RecToGif.Models;
 
 namespace RecToGif.Recorder
 {
-    public class InputHook : IDisposable
+    public class InputHook : IInputHook
     {
         private readonly ConcurrentQueue<InputEvent> _eventBuffer = new();
         private Thread? _hookThread;
@@ -132,7 +132,10 @@ namespace RecToGif.Recorder
         {
             while (_isRunning)
             {
-                int waitResult = MsgWaitForMultipleObjects(new IntPtr[] { _stopEvent.SafeWaitHandle.DangerousGetHandle() }, false, 100, 0xff);
+                var safeHandle = _stopEvent.SafeWaitHandle;
+                IntPtr handlePtr = safeHandle.DangerousGetHandle();
+                int waitResult = MsgWaitForMultipleObjects(new IntPtr[] { handlePtr }, false, 100, 0xff);
+                GC.KeepAlive(safeHandle); // ensure handle is not finalized during the native call
                 if (waitResult == -1)
                 {
                     // WAIT_FAILED (-1) means the wait handle became invalid — exit

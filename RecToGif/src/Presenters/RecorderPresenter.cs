@@ -10,11 +10,12 @@ namespace RecToGif.Presenters
 {
     public class RecorderPresenter
     {
-        private readonly IRecorderView _view;
+        private IRecorderView? _view;
+        private readonly ISettingsService _settingsService;
+        private readonly IShortcutService _shortcutService;
+        private readonly IInputHook _inputHook;
         private RecorderEngine? _engine;
         private CaptureSession? _currentSession;
-        private readonly InputHook _globalHook = new();
-        private readonly ShortcutService _shortcutService;
 
         private GraphicsCaptureItem? _selectedItem;
         private System.Drawing.Rectangle? _selectedRegion;
@@ -28,11 +29,14 @@ namespace RecToGif.Presenters
         public bool IsPaused { get; private set; }
         public bool IsRecording => _engine != null;
 
-        public RecorderPresenter(IRecorderView view)
+        public RecorderPresenter(
+            ISettingsService settingsService,
+            IShortcutService shortcutService,
+            IInputHook inputHook)
         {
-            _view = view;
-            _shortcutService = new ShortcutService(_globalHook);
-            _globalHook.Start();
+            _settingsService = settingsService;
+            _shortcutService = shortcutService;
+            _inputHook = inputHook;
 
             _shortcutService.OnStartRecording += async (s, e) => await StartRecordingAsync();
             _shortcutService.OnPauseRecording += (s, e) => TogglePause();
@@ -40,7 +44,7 @@ namespace RecToGif.Presenters
             _shortcutService.OnDiscardRecording += (s, e) => DiscardRecording();
 
             // Restore or create default region
-            var settings = SettingsService.LoadSettings();
+            var settings = _settingsService.LoadSettings();
             if (settings.LastRegion.HasValue)
             {
                 _selectedRegion = settings.LastRegion.Value;
@@ -57,10 +61,19 @@ namespace RecToGif.Presenters
                     w, h
                 );
                 settings.LastRegion = _selectedRegion;
-                SettingsService.SaveSettings(settings);
+                _settingsService.SaveSettings(settings);
             }
 
-            _view.OnSourceChanged(CurrentSourceDescription!);
+            // View set by RecorderForm after construction
+        }
+
+        public IRecorderView View
+        {
+            set
+            {
+                _view = value;
+                _view!.OnSourceChanged(CurrentSourceDescription!);
+            }
         }
 
         public void TogglePause()
@@ -76,13 +89,13 @@ namespace RecToGif.Presenters
         public async Task SelectWindowAsync()
         {
             var picker = new GraphicsCapturePicker();
-            InitializeWithWindow.Initialize(picker, _view.Handle);
+            InitializeWithWindow.Initialize(picker, _view!.Handle);
             var item = await picker.PickSingleItemAsync();
             if (item != null)
             {
                 _selectedItem = item;
                 _selectedRegion = null;
-                _view.OnSourceChanged(CurrentSourceDescription);
+                _view!.OnSourceChanged(CurrentSourceDescription);
             }
         }
 
@@ -92,11 +105,11 @@ namespace RecToGif.Presenters
             _selectedItem = null;
 
             // Persist
-            var settings = SettingsService.LoadSettings();
+            var settings = _settingsService.LoadSettings();
             settings.LastRegion = region;
-            SettingsService.SaveSettings(settings);
+            _settingsService.SaveSettings(settings);
 
-            _view.OnSourceChanged(CurrentSourceDescription);
+            _view!.OnSourceChanged(CurrentSourceDescription);
         }
 
         public async Task StartRecordingAsync()
@@ -114,7 +127,7 @@ namespace RecToGif.Presenters
 
             if (!HasSource)
             {
-                _view.ShowInlineMessage("Choose a region or window first");
+                _view!.ShowInlineMessage("Choose a region or window first");
                 return;
             }
 
@@ -125,12 +138,12 @@ namespace RecToGif.Presenters
                 if (_regionConsentItem == null)
                 {
                     var picker = new GraphicsCapturePicker();
-                    InitializeWithWindow.Initialize(picker, _view.Handle);
+                    InitializeWithWindow.Initialize(picker, _view!.Handle);
                     _regionConsentItem = await picker.PickSingleItemAsync().AsTask().ConfigureAwait(true);
 
                     if (_regionConsentItem == null)
                     {
-                        _view.ShowInlineMessage("Capture consent denied.");
+                        _view!.ShowInlineMessage("Capture consent denied.");
                         return;
                     }
                 }
@@ -140,10 +153,10 @@ namespace RecToGif.Presenters
 
             if (item == null) return;
 
-            SettingsService.EnsureDirectoriesExist();
-            string outputDir = SettingsService.CreateNewTempSessionFolder();
+            _settingsService.EnsureDirectoriesExist();
+            string outputDir = _settingsService.CreateNewTempSessionFolder();
 
-            var settings = SettingsService.LoadSettings();
+            var settings = _settingsService.LoadSettings();
             _currentSession = new CaptureSession
             {
                 OutputDirectory = outputDir,
@@ -166,11 +179,12 @@ namespace RecToGif.Presenters
                 _currentSession.TargetRegion = new System.Drawing.Rectangle(0, 0, item.Size.Width, item.Size.Height);
             }
 
-            _engine = new RecorderEngine(_currentSession, _globalHook);
+            _engine = new RecorderEngine(_currentSession, _inputHook);
+            _inputHook.Start();
             _engine.Start(item);
 
             IsPaused = false;
-            _view.OnRecordingStarted();
+            _view!.OnRecordingStarted();
         }
 
         public void PauseRecording()
@@ -178,7 +192,7 @@ namespace RecToGif.Presenters
             if (_engine == null) return;
             _engine.Pause();
             IsPaused = true;
-            _view.OnRecordingPaused();
+            _view!.OnRecordingPaused();
         }
 
         public void ResumeRecording()
@@ -186,7 +200,7 @@ namespace RecToGif.Presenters
             if (_engine == null) return;
             _engine.Resume();
             IsPaused = false;
-            _view.OnRecordingResumed();
+            _view!.OnRecordingResumed();
         }
 
         public async Task StopRecordingAsync()
@@ -202,13 +216,13 @@ namespace RecToGif.Presenters
                 bool success = await EditorPresenter.OpenWithSession(_currentSession.OutputDirectory);
                 if (!success)
                 {
-                    _view.OnRecordingStopped();
+                    _view!.OnRecordingStopped();
                     return;
                 }
             }
 
-            _view.OnRecordingStopped();
-            _view.Close();
+            _view!.OnRecordingStopped();
+            _view!.Close();
         }
 
         public void DiscardRecording()
@@ -227,7 +241,7 @@ namespace RecToGif.Presenters
             {
                 System.IO.Directory.Delete(dir, true);
             }
-            _view.OnRecordingDiscarded();
+            _view!.OnRecordingDiscarded();
         }
 
         public int GetFrameCount() => _engine?.FrameCount ?? 0;

@@ -253,7 +253,8 @@ namespace RecToGif.Controls
                 if (_cachedWatermark == null || _cachedWatermarkPath != overlay.Content)
                 {
                     _cachedWatermark?.Dispose();
-                    _cachedWatermark = Image.FromFile(overlay.Content);
+                    var fs = new FileStream(overlay.Content, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    _cachedWatermark = Image.FromStream(fs);
                     _cachedWatermarkPath = overlay.Content;
                 }
 

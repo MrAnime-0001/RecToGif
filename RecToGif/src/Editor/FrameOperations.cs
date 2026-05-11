@@ -8,6 +8,7 @@ namespace RecToGif.Editor
     {
         private readonly List<int> _indicesToDelete;
         private List<(int Index, FrameItem Item)>? _deletedItems;
+        private bool _executed = false;
 
         public DeleteFramesCommand(IEnumerable<int> indices)
         {
@@ -17,6 +18,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _deletedItems = new List<(int Index, FrameItem Item)>();
             foreach (int index in _indicesToDelete)
             {
@@ -32,6 +34,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(DeleteFramesCommand)} before Execute.");
             if (_deletedItems == null) return;
             // Insert in stored descending order: highest index first, so later lower-index inserts are unaffected
             foreach (var (index, item) in _deletedItems)
@@ -45,6 +49,7 @@ namespace RecToGif.Editor
     {
         private readonly List<int> _indicesToDuplicate;
         private List<int>? _newIndices;
+        private bool _executed = false;
 
         public DuplicateFramesCommand(IEnumerable<int> indices)
         {
@@ -53,6 +58,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _newIndices = new List<int>();
             int offset = 0;
             foreach (int index in _indicesToDuplicate)
@@ -68,6 +74,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(DuplicateFramesCommand)} before Execute.");
             if (_newIndices == null) return;
             foreach (int index in _newIndices.OrderByDescending(i => i))
             {
@@ -82,6 +90,7 @@ namespace RecToGif.Editor
         private readonly int _direction; // -1 for left, 1 for right
         private List<int>? _oldIndices;
         private List<int>? _newIndices;
+        private bool _executed = false;
 
         public MoveFramesCommand(IEnumerable<int> indices, int direction)
         {
@@ -91,6 +100,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _oldIndices = _indicesToMove.ToList();
             _newIndices = new List<int>();
 
@@ -125,6 +135,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(MoveFramesCommand)} before Execute.");
             if (_newIndices == null || _oldIndices == null) return;
             
             var items = _newIndices.Select(i => frames[i]).ToList();
@@ -144,6 +156,7 @@ namespace RecToGif.Editor
         private readonly List<int> _indices;
         private readonly int _newDelay;
         private List<(int Index, int OldDelay)>? _oldDelays;
+        private bool _executed = false;
 
         public ChangeDelayCommand(IEnumerable<int> indices, int newDelay)
         {
@@ -153,6 +166,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _oldDelays = new List<(int, int)>();
             foreach (int index in _indices)
             {
@@ -163,6 +177,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(ChangeDelayCommand)} before Execute.");
             if (_oldDelays == null) return;
             foreach (var (index, oldDelay) in _oldDelays)
             {
@@ -177,6 +193,7 @@ namespace RecToGif.Editor
         private readonly int _end;
         private List<(int Index, FrameItem Item)>? _removedBefore;
         private List<(int Index, FrameItem Item)>? _removedAfter;
+        private bool _executed = false;
 
         public KeepRangeCommand(int start, int end)
         {
@@ -186,6 +203,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _removedBefore = new List<(int, FrameItem)>();
             _removedAfter = new List<(int, FrameItem)>();
 
@@ -206,6 +224,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(KeepRangeCommand)} before Execute.");
             if (_removedBefore == null || _removedAfter == null) return;
 
             foreach (var (index, item) in _removedBefore)
@@ -223,6 +243,7 @@ namespace RecToGif.Editor
     {
         private readonly Rectangle _newCrop;
         private Rectangle _oldCrop;
+        private bool _executed = false;
 
         public CropCommand(Rectangle newCrop)
         {
@@ -231,12 +252,15 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _oldCrop = settings.CropRegion;
             settings.CropRegion = _newCrop;
         }
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(CropCommand)} before Execute.");
             settings.CropRegion = _oldCrop;
         }
     }
@@ -245,6 +269,7 @@ namespace RecToGif.Editor
     {
         private readonly Size _newSize;
         private Size _oldSize;
+        private bool _executed = false;
 
         public ResizeCommand(Size newSize)
         {
@@ -253,12 +278,15 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _oldSize = settings.TargetSize;
             settings.TargetSize = _newSize;
         }
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(ResizeCommand)} before Execute.");
             settings.TargetSize = _oldSize;
         }
     }
@@ -266,6 +294,7 @@ namespace RecToGif.Editor
     public class AddOverlayCommand : ICommand
     {
         private readonly VisualOverlay _overlay;
+        private bool _executed = false;
 
         public AddOverlayCommand(VisualOverlay overlay)
         {
@@ -274,11 +303,14 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             settings.Overlays.Add(_overlay);
         }
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(AddOverlayCommand)} before Execute.");
             settings.Overlays.Remove(_overlay);
         }
     }
@@ -289,6 +321,7 @@ namespace RecToGif.Editor
         private readonly int _newThickness;
         private Color _oldColor;
         private int _oldThickness;
+        private bool _executed = false;
 
         public UpdateBorderCommand(Color color, int thickness)
         {
@@ -298,6 +331,7 @@ namespace RecToGif.Editor
 
         public void Execute(List<FrameItem> frames, ProjectSettings settings)
         {
+            _executed = true;
             _oldColor = settings.BorderColor;
             _oldThickness = settings.BorderThickness;
             settings.BorderColor = _newColor;
@@ -306,6 +340,8 @@ namespace RecToGif.Editor
 
         public void Undo(List<FrameItem> frames, ProjectSettings settings)
         {
+            if (!_executed)
+                throw new InvalidOperationException($"Cannot undo {nameof(UpdateBorderCommand)} before Execute.");
             settings.BorderColor = _oldColor;
             settings.BorderThickness = _oldThickness;
         }

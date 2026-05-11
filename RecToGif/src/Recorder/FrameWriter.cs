@@ -8,7 +8,7 @@ using RecToGif.Models;
 
 namespace RecToGif.Recorder
 {
-    public class FrameWriter
+    public class FrameWriter : IFrameWriter
     {
         private readonly string _outputDirectory;
 

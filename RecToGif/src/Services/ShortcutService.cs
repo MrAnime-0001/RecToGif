@@ -6,10 +6,10 @@ using RecToGif.Recorder;
 
 namespace RecToGif.Services
 {
-    public class ShortcutService
+    public class ShortcutService : IShortcutService
     {
         private readonly ShortcutMap _map;
-        private readonly InputHook _hook;
+        private readonly IInputHook _hook;
 
         public event EventHandler? OnStartRecording;
         public event EventHandler? OnStopRecording;
@@ -17,10 +17,10 @@ namespace RecToGif.Services
         public event EventHandler? OnDiscardRecording;
         public event EventHandler? OnOpenRecorder;
 
-        public ShortcutService(InputHook hook)
+        public ShortcutService(IInputHook hook, ISettingsService settingsService)
         {
             _hook = hook;
-            _map = SettingsService.LoadShortcuts();
+            _map = settingsService.LoadShortcuts();
             _hook.ShortcutPressed += HandleShortcut;
         }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using RecToGif.Editor;
 using RecToGif.Controls;
 using RecToGif.Presenters;
@@ -14,10 +15,11 @@ namespace RecToGif.Forms
         private readonly EditorPresenter _presenter;
         private bool _isExporting;
 
-        public EditorForm()
+        public EditorForm(EditorPresenter presenter)
         {
             InitializeComponent();
-            _presenter = new EditorPresenter(this);
+            _presenter = presenter;
+            _presenter.View = this;
             SubscribeEvents();
             SetupLoopFinderEvents();
         }
@@ -28,7 +30,7 @@ namespace RecToGif.Forms
         {
             _timeline.SelectionChanged += (s, e) => _presenter.OnSelectionChanged(_timeline.SelectedIndices);
             _timeline.FrameDoubleClicked += (s, index) => _presenter.OnFrameDoubleClicked(index);
-            _timeline.DeleteRequested += (s, e) => _presenter.DeleteSelectedFrames();
+            _timeline.DeleteRequested += (s, e) => _presenter.DeleteFrames(_timeline.LastDeletedIndices);
             _timeline.UndoRequested += (s, e) => _presenter.Undo();
             _timeline.RedoRequested += (s, e) => _presenter.Redo();
 
@@ -70,7 +72,10 @@ namespace RecToGif.Forms
                                         MessageBoxButtons.YesNo,
                                         MessageBoxIcon.Error);
                                     if (result == DialogResult.Yes)
-                                        new SettingsForm().ShowDialog(this);
+                                    {
+                                        var sf = Program.ServiceProvider.GetRequiredService<SettingsForm>();
+                                        sf.ShowDialog(this);
+                                    }
                                 }
                                 catch (Exception ex)
                                 {

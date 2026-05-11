@@ -10,7 +10,7 @@ using RecToGif.Models;
 
 namespace RecToGif.Services
 {
-    public class ExportPipeline
+    public class ExportPipeline : IExportPipeline
     {
         private readonly AppSettings _appSettings;
 
@@ -231,6 +231,7 @@ namespace RecToGif.Services
                 RedirectStandardOutput = true
             };
 
+            ValidateExePath(gifskiPath, "gifski");
             ValidateOutputPath(outputPath);
 
             using (var process = Process.Start(psi))
@@ -276,6 +277,7 @@ namespace RecToGif.Services
                 CreateNoWindow = true
             };
 
+            ValidateExePath(ffmpegPath, "ffmpeg");
             ValidateOutputPath(outputPath);
 
             using (var process = Process.Start(psi))
@@ -304,12 +306,28 @@ namespace RecToGif.Services
                 throw new ArgumentException("Output path contains invalid characters.");
         }
 
+        /// <summary>
+        /// Sanity-check that a resolved executable path is an .exe whose file name
+        /// starts with the expected tool name. This prevents a user-configured path
+        /// from accidentally pointing to a different executable.
+        /// </summary>
+        private static void ValidateExePath(string exePath, string expectedToolName)
+        {
+            if (!File.Exists(exePath))
+                throw new FileNotFoundException($"Executable not found: {exePath}");
+            string fileName = Path.GetFileNameWithoutExtension(exePath);
+            if (!fileName.StartsWith(expectedToolName, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException(
+                    $"Configured path for {expectedToolName} points to '{fileName}.exe', which does not appear to be {expectedToolName}.");
+        }
+
         private async Task RenderWebpAsync(string sourceDir, string outputPath, ProjectSettings settings, IProgress<int> progress, CancellationToken token, int fps)
         {
             string? ffmpegPath = FindExecutable("ffmpeg.exe", @"RecToGif\ffmpeg", _appSettings.FfmpegPath);
             if (ffmpegPath == null)
                 throw new FileNotFoundException("ffmpeg.exe not found. Set the path in Settings → External Tools, place it in %LocalAppData%\\RecToGif\\ffmpeg\\, or add it to PATH.");
 
+            ValidateExePath(ffmpegPath, "ffmpeg");
             ValidateOutputPath(outputPath);
 
             string args = $"-y -framerate {fps} -i \"{sourceDir}\\%05d.png\" -c:v libwebp_anim -lossless 0 -quality 80 -loop 0 \"{outputPath}\"";

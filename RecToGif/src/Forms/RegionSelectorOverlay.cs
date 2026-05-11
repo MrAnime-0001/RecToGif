@@ -2,7 +2,6 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-
 namespace RecToGif.Forms
 {
     public sealed partial class RegionSelectorOverlay : Form
@@ -26,7 +25,7 @@ namespace RecToGif.Forms
 
         private enum ResizeEdge { None, N, S, E, W, NE, NW, SE, SW }
 
-        public RegionSelectorOverlay()
+        public RegionSelectorOverlay(Services.ISettingsService settingsService)
         {
             InitializeComponent();
             Bounds = SystemInformation.VirtualScreen;
@@ -36,7 +35,7 @@ namespace RecToGif.Forms
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
 
             // Load last saved region
-            var settings = Services.SettingsService.LoadSettings();
+            var settings = settingsService.LoadSettings();
             if (settings.LastRegion.HasValue)
             {
                 SelectedRegion = settings.LastRegion.Value;
