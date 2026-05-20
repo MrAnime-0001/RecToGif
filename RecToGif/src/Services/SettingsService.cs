@@ -44,7 +44,7 @@ namespace RecToGif.Services
                     if (name.Length == 36 && Guid.TryParse(name, out _))
                     {
                         var age = DateTime.Now - Directory.GetCreationTime(dir);
-                        if (age > TimeSpan.FromHours(24))
+                        if (age > TimeSpan.FromHours(2))
                         {
                             Directory.Delete(dir, true);
                             System.Diagnostics.Debug.WriteLine($"[SettingsService] Cleaned up stale session: {name}");

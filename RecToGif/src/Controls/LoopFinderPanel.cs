@@ -114,7 +114,7 @@ namespace RecToGif.Controls
 
             try
             {
-                var results = await FindLoopsRequested((int)_minSpanInput.Value, (int)_maxSpanInput.Value, _thresholdSlider.Value, 64, progress, token);
+                var results = await FindLoopsRequested((int)_minSpanInput.Value, (int)_maxSpanInput.Value, _thresholdSlider.Value / 100.0, 64, progress, token);
                 foreach (var res in results)
                 {
                     _resultsList.Items.Add(res);

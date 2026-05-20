@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using RecToGif.Forms;
+using RecToGif.Models;
 using RecToGif.Presenters;
 using RecToGif.Recorder;
 using RecToGif.Services;
@@ -33,6 +34,7 @@ namespace RecToGif
             services.AddTransient<EditorPresenter>();
 
             // Services
+            services.AddTransient<AppSettings>(sp => sp.GetRequiredService<ISettingsService>().LoadSettings());
             services.AddTransient<IExportPipeline, ExportPipeline>();
 
             ServiceProvider = services.BuildServiceProvider();

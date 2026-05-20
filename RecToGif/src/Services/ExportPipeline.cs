@@ -274,7 +274,8 @@ namespace RecToGif.Services
             {
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             };
 
             ValidateExePath(ffmpegPath, "ffmpeg");
@@ -289,7 +290,8 @@ namespace RecToGif.Services
 
                     if (process.ExitCode != 0)
                     {
-                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}.");
+                        string stderr = await process.StandardError.ReadToEndAsync();
+                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}: {stderr}");
                     }
                 }
                 else
@@ -336,7 +338,8 @@ namespace RecToGif.Services
             {
                 Arguments = args,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true
             };
 
             using (var process = Process.Start(psi))
@@ -348,7 +351,8 @@ namespace RecToGif.Services
 
                     if (process.ExitCode != 0)
                     {
-                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}.");
+                        string stderr = await process.StandardError.ReadToEndAsync();
+                        throw new InvalidOperationException($"ffmpeg exited with code {process.ExitCode}: {stderr}");
                     }
                 }
                 else

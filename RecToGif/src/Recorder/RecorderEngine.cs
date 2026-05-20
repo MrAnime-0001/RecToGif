@@ -35,9 +35,6 @@ namespace RecToGif.Recorder
         private long _lastFrameTimestampMs = 0;
         private readonly List<Task> _pendingSaveTasks = new();
         private readonly object _pendingLock = new();
-        private byte[] _pixelBuffer = Array.Empty<byte>();
-        private int _pixelBufferWidth = 0;
-        private int _pixelBufferHeight = 0;
         private int _saveErrorCount = 0;
         private int _droppedFrameCount = 0;
         private CancellationTokenSource? _stopCts;
@@ -170,7 +167,7 @@ namespace RecToGif.Recorder
             int outWidth = _session.TargetRegion.Width > 0 ? Math.Min(_session.TargetRegion.Width, captureWidth - cropX) : captureWidth;
             int outHeight = _session.TargetRegion.Height > 0 ? Math.Min(_session.TargetRegion.Height, captureHeight - cropY) : captureHeight;
 
-            byte[] pixelData = CaptureSurfacePixels(frame.Surface, captureWidth, captureHeight, reuseBuffer: true);
+            byte[] pixelData = CaptureSurfacePixels(frame.Surface, captureWidth, captureHeight);
 
             // Use Format32bppArgb — BGRA source pixels from WinRT will be interpreted correctly
             using var bitmap = new Bitmap(outWidth, outHeight, PixelFormat.Format32bppArgb);
@@ -251,7 +248,7 @@ namespace RecToGif.Recorder
             };
         }
 
-        private byte[] CaptureSurfacePixels(IDirect3DSurface surface, int width, int height, bool reuseBuffer = false)
+        private byte[] CaptureSurfacePixels(IDirect3DSurface surface, int width, int height)
         {
             var nativeSurface = GetNativeSurface(surface);
             using var tex2D = nativeSurface.QueryInterface<SharpDX.Direct3D11.Texture2D>();
@@ -278,14 +275,7 @@ namespace RecToGif.Recorder
             {
                 int stride = width * 4;
                 int totalSize = height * stride;
-
-                if (!reuseBuffer || totalSize > _pixelBuffer.Length)
-                {
-                    _pixelBuffer = new byte[totalSize];
-                    _pixelBufferWidth = width;
-                    _pixelBufferHeight = height;
-                }
-                var pixels = _pixelBuffer;
+                var pixels = new byte[totalSize];
 
                 for (int y = 0; y < height; y++)
                 {

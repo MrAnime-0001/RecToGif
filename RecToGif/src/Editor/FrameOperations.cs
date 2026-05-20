@@ -121,7 +121,7 @@ namespace RecToGif.Editor
             }
             else if (_direction == 1) // Move Right
             {
-                if (_indicesToMove.Last() == frames.Count - 1) return;
+                if (_indicesToMove.Last() == frames.Count - 1) { _newIndices = _oldIndices.ToList(); return; }
                 foreach (int index in _indicesToMove.AsEnumerable().Reverse())
                 {
                     var item = frames[index];

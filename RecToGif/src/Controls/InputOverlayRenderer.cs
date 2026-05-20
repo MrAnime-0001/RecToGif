@@ -84,7 +84,7 @@ namespace RecToGif.Controls
 
             var rect = new Rectangle(x, y, width, height);
 
-            using (var path = GetRoundedRect(rect, CornerRadius))
+            var path = GetRoundedRect(rect, CornerRadius);
             using (var brush = new SolidBrush(Color.FromArgb((int)(Opacity * PillColor.A), PillColor)))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;

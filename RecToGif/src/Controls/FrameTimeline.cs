@@ -162,6 +162,8 @@ namespace RecToGif.Controls
                     }
                 }
             }
+
+            foreach (var bmp in paintCloneCache.Values) bmp?.Dispose();
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
